@@ -25,16 +25,31 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     ViewCurve    *maincurve;
-    void test_patinfo(Measurement *measurement);
+
+    // Structs
+
     //void paintEvent(QPaintEvent *event);
     struct SignalFile signal;
     struct SignalFile SF;
     struct Measurement HDR;
     struct SignalFile *pSF;
+
+    // Variables
+
     int foo;
+    int files_open;
+    int mouseWheel;
+    long long pagetime;
+    long long lengthOfFile;
+    long long viewtime;
+
+    // Methods
     int getFoo(){
         return foo;
     }
+
+    void test_patinfo(Measurement *measurement);
+    void setup_viewbuf();
 
     void setFoo(int i){
         foo=i;
@@ -60,11 +75,22 @@ private:
     QMenuBar     *menubar;
 
     QMenu   *filemenu,
-            *infomenu,
-            *aboutmenu;
+    *infomenu,
+    *helpmenu;
 
 public slots:
     void show_about_dialog();
     void show_patient_info();
+    void shift_page_left();
+    void shift_page_right();
+    void next_page();
+    void previous_page();
+    void first_page();
+    void last_page();
+
+
+private slots:
+    void show_kb_shortcuts();
+
 };
 #endif // MAINWINDOW_H
