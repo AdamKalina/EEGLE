@@ -106,7 +106,7 @@ DataTable read_data_table(fstream &file)
     DataTable data_table;
     long y;
     vector<long> dt = readChannel(y, file, 17);
-    data_table.measurement_info = Block{dt[0], dt[1]};
+    data_table.measurement_info = Block{dt[0], dt[1], NULL};
     data_table.recorder_montage_info = Block{dt[2], dt[3]};
     data_table.events_info = Block{dt[4], dt[5]};
     data_table.notes_info = Block{dt[6], dt[7]};
@@ -226,13 +226,15 @@ RecorderMontageInfo read_recorder_info(fstream &file, long offset, long size)
         channel.save_buffer_size = save_buffer_size[i];
         recorder_info.channels.push_back(channel);
     }
-
+    cout << "end of read_recorder_info: ";
+    whereAmI(file);
     return recorder_info;
 }
 
 vector<Event> read_events(fstream &file, long offset, long size, long nevents)
 {
     file.seekg(offset);
+    cout << "beginning of read_events: "; whereAmI(file);
     //nevents = 10240;
     vector<Event> events;
     short tcount;
@@ -284,6 +286,7 @@ vector<Event> read_events(fstream &file, long offset, long size, long nevents)
 
 vector<EventDesc> read_event_descs(fstream &file)
 {
+    cout << "read_event_descs: "; whereAmI(file);
     // Careful on this - need to count for empty cycles in previous struct - function read_events
     //cout << "top of read_event_desc "; whereAmI(file);
     vector<EventDesc> types;
@@ -316,7 +319,6 @@ vector<EventDesc> read_event_descs(fstream &file)
 
 vector<Event> get_selected_events_4_types(vector<Event> events, int type)
 {
-
     vector<Event> selected;
 
     for (int i = 0; i < events.size(); i++)
@@ -331,7 +333,9 @@ vector<Event> get_selected_events_4_types(vector<Event> events, int type)
 
 Spages read_signal_pages(fstream &file, bool read_signal_data, long file_size, long offset, int page_size, int epoch_length, int channels_used, vector<Channel> channels)
 {
+    cout << "Begining of read_signal_pages: "; whereAmI(file);
     cout << "Channels used: " << channels_used << endl;
+
     int header_length = 6;
     short h;
     int num_pages = int((file_size - offset) / page_size);
@@ -350,6 +354,9 @@ Spages read_signal_pages(fstream &file, bool read_signal_data, long file_size, l
     int current_offset = offset;
     bool stop = false;
     file.seekg(current_offset);
+
+    cout << "Begining of signal reading read_signal_pages: "; whereAmI(file);
+
     int curr_page = -1;
 
     while (!stop && !file.eof())
@@ -480,7 +487,11 @@ SignalFile read_signal_file(string file_name, bool read_signal_data){
 
     signal.store_events = store_events_list.size();
     cout << "number of channels used: "<< signal.recorder_info.numberOfChannelsUsed << endl;
-    //spages =
+
+    // TO DO - read display montage at between end of read_recorder_info and beginning of read_events
+    // TO DO - read additional montages at position signal.data_table.display_montages_info.offset;
+
+    //spages
     Spages spages = read_signal_pages(file, true, file_size, signal.data_table.signal_info.offset, signal.data_table.signal_info.size, 30, signal.recorder_info.numberOfChannelsUsed, signal.recorder_info.channels);
     signal.signal_pages = spages.pages;
     signal.signal_data = spages.esignals;

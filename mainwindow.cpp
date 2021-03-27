@@ -10,39 +10,47 @@ MainWindow::MainWindow(QWidget *parent)
 {
 
     setWindowFlags(Qt::Window | Qt::MSWindowsFixedSizeDialogHint); // disable resizing by hand
+    setAcceptDrops(true);
 
+    if(testing){
+        // load data
+        path2file = "D:/Dropbox/Share/B0000938.sig";
+        open_file(path2file);
+        //signal = read_signal_file(path2file, true);
+        //file_open = 1; // 1 if file is loaded
 
-    // load data
-    // TO DO - samostatna metoda na otevirani souboru
-    string path2file = "D:/Dropbox/Share/B0000938.sig";
-    signal = read_signal_file(path2file, true);
-    files_open = 1; // 1 if file is loaded
+        if (file_open){
+            qDebug() << "number of non-zero samples: " << signal.signal_data[1].size() - std::count(signal.signal_data[1].begin(), signal.signal_data[1].end(), 0);
+            qDebug() << "epoch length in samples: " << signal.recorder_info.epochLengthInSamples;
+            qDebug() << "num of pages: " << signal.signal_pages.size();
+            qDebug() << "length in seconds: " << (signal.recorder_info.epochLengthInSamples/250)*signal.signal_pages.size();
+            qDebug() << "length in samples: " << signal.recorder_info.epochLengthInSamples;
+            //lengthOfFile = (signal.recorder_info.epochLengthInSamples/250)*signal.signal_pages.size();
+            lengthOfFile = (signal.signal_data[1].size() - std::count(signal.signal_data[1].begin(), signal.signal_data[1].end(), 0))/signal.recorder_info.channels[1].sampling_rate;//number of non-zero samples/sampling frequency
+            qDebug() <<  lengthOfFile;
+            test_patinfo(&signal.measurement);
 
+            qDebug() << signal.recorder_info.montageName;
+            qDebug() << signal.data_table.display_montages_info.offset;
+            qDebug() << signal.data_table.display_montages_info.header_size;
+            qDebug() << signal.data_table.display_montages_info.size;
+        }
+    }
 
-    qDebug() << "number of non-zero samples: " << signal.signal_data[1].size() - std::count(signal.signal_data[1].begin(), signal.signal_data[1].end(), 0);
-    qDebug() << "epoch length in samples: " << signal.recorder_info.epochLengthInSamples;
-    qDebug() << "num of pages: " << signal.signal_pages.size();
-    qDebug() << "length in seconds: " << (signal.recorder_info.epochLengthInSamples/250)*signal.signal_pages.size();
-    //lengthOfFile = (signal.recorder_info.epochLengthInSamples/250)*signal.signal_pages.size();
-    lengthOfFile = (signal.signal_data[1].size() - std::count(signal.signal_data[1].begin(), signal.signal_data[1].end(), 0))/signal.recorder_info.channels[1].sampling_rate;//number of non-zero samples/sampling frequency
-    qDebug() <<  lengthOfFile;
 
     // variables for diplaying EEG
     viewtime = 0; //start of left edge of viewed page in seconds
     pagetime = 5; // number of seconds to show on the screen
     mouseWheel = 0; //1 = step, 0 = page
 
-    test_patinfo(&signal.measurement);
-
-    foo = 88;
-
     //Deprecated - usable only for private and protected variable
+    //foo = 88;
     //setFoo(foo);
     //HDR = signal.measurement;
     //setHDR(signal.measurement);
     //setSignal(signal);
-    qDebug()<< "Foo v mainwindow: " <<foo;
-    qDebug() << signal.recorder_info.epochLengthInSamples;
+    //qDebug()<< "Foo v mainwindow: " <<foo;
+
 
     //maincurve
     maincurve = new ViewCurve(this);
@@ -51,17 +59,92 @@ MainWindow::MainWindow(QWidget *parent)
     //menus
     menubar = menuBar();
 
+    // ======== File menu ========
     filemenu = new QMenu(this);
     filemenu->setTitle("&File");
+    filemenu->addAction("Open", this, SLOT(open_file_dialog()));
+    filemenu->addAction("Patient info", this, SLOT(show_patient_info()));
     menubar->addMenu(filemenu);
 
+
+    // ======== Info ======== // not used right now
     infomenu = new QMenu(this);
     infomenu->setTitle("&Info");
-    infomenu->addAction("Patient info", this, SLOT(show_patient_info()));
     menubar->addMenu(infomenu);
 
+
+    // ======== Timescale ========
+    timemenu = new QMenu(this);
+    timemenu->setTitle("&Timescale");
+    timemenu->addAction("Fixed resolution");
+    fixedresolutiongroup = new QActionGroup(this);
+    timemenu->addSeparator();
+    timemenu->addAction("Fixed page range");
+    fixedpagegroup = new QActionGroup(this);
+    menubar->addMenu(timemenu);
+
+    // ======== Amplitude ========
+    amplitudemenu = new QMenu(this);
+    amplitudemenu->setTitle("&Amplitude");
+    menubar->addMenu(amplitudemenu);
+
+    // ======== Montages ========
+    montagemenu = new QMenu(this);
+    montagemenu->setTitle("&Montage");
+    menubar->addMenu(montagemenu);
+
+
+    // ======== Settings ========
+    // settings menu - TO DO - separators with text, e.g. https://stackoverflow.com/questions/22635903/non-interactive-items-in-qmenu
+    // TO DO - make text in separators bold
+    settingsmenu= new QMenu(this);
+    settingsmenu->setTitle("&Settings");
+
+    // ======== Keyboard bindings ========
+    //settingsmenu->addSection("Keyboard bindings"); // does not work on windows? differnt widget style?
+    //settingsmenu->addSeparator()->setText("Keyboard bindings"); // does not work on windows?
+    settingsmenu->addAction(tr("Keyboard bindings"));
+
+    // create separate action for each possibility and register them to groups (so they are mutualy exclusive) and then to menu
+    BrainLabAction = new QAction(tr("BrainLab"), this);
+    BrainLabAction->setCheckable(true);
+
+    NicOneAction = new QAction(tr("NicOne"), this);
+    NicOneAction->setCheckable(true);
+    NicOneAction->setChecked(true);
+
+    //settingsmenu->addAction("BrainLab")->setCheckable(true); // simpler way, but then unable to reigster in group
+    //settingsmenu->addAction("NicOne")->setCheckable(true);
+    // create group and register methods
+    keyboardgroup = new QActionGroup(this);
+    keyboardgroup->addAction(BrainLabAction);
+    keyboardgroup->addAction(NicOneAction);
+    // add methods to menu
+    settingsmenu->addAction(BrainLabAction);
+    settingsmenu->addAction(NicOneAction);
+
+    // ======== Mouse wheel scrolling ========
+    settingsmenu->addSeparator();
+    settingsmenu->addAction("Mouse wheel scrolling");
+
+    mousePageAction = new QAction(tr("Page"), this);
+    mousePageAction->setCheckable(true);
+    mousePageAction->setChecked(true);
+
+    mouseStepAction = new QAction(tr("Step"), this);
+    mouseStepAction->setCheckable(true);
+
+
+    mousewheelgroup = new QActionGroup(this);
+    mousewheelgroup->addAction(mousePageAction);
+    mousewheelgroup->addAction(mouseStepAction);
+    settingsmenu->addAction(mousePageAction);
+    settingsmenu->addAction(mouseStepAction);
+    menubar->addMenu(settingsmenu);
+
+    // ======== Help menu ========
     helpmenu = new QMenu(this);
-    helpmenu->setTitle("&About");
+    helpmenu->setTitle("&Help");
     helpmenu->addAction("About", this, SLOT(show_about_dialog()));
     helpmenu->addAction("Keyboard shortcuts", this, SLOT(show_kb_shortcuts()));
     menubar->addMenu(helpmenu);
@@ -78,6 +161,80 @@ void MainWindow::test_patinfo(Measurement *patinfo){
     time_t epoch = decode_date_time(patinfo->start_date, patinfo->start_hour);
     cout << ctime(&epoch) << endl;
 }
+
+void MainWindow::open_file_dialog(){
+
+    // use toLocal8Bit() for converting QString to std::string
+    path2file = QFileDialog::getOpenFileName(this, tr("Open BrainLab EEG file"), "D:/Dropbox/Share", tr("BrainLab Files (*.sig)")).toLocal8Bit().data();
+    open_file(path2file);
+
+};
+
+
+void MainWindow::dragEnterEvent(QDragEnterEvent *event)
+{
+    // accept only files to being dragged over the mainwindow
+    if (event->mimeData()->hasUrls())
+        event->acceptProposedAction();
+}
+
+//void MainWindow::dropEvent(QDropEvent* event)
+// {
+//   const QMimeData* mimeData = event->mimeData();
+
+//   // check for our needed mime type, here a file or a list of files
+//   if (mimeData->hasUrls())
+//   {
+//     QStringList pathList;
+//     QList<QUrl> urlList = mimeData->urls();
+
+//     // extract the local paths of the files
+//     for (int i = 0; i < urlList.size() && i < 32; +i)
+//     {
+//       pathList.append(urlList.at(i).toLocalFile());
+//     }
+
+//     // call a function to open the files
+//     //open_file(pathList);
+//     qDebug() << pathList;
+//   }
+// }
+
+
+void MainWindow::dropEvent(QDropEvent* e)
+{
+    QStringList accepted_types;
+    accepted_types << "sig";
+    foreach(const QUrl & url, e->mimeData()->urls())
+    {
+        QString fname = url.toLocalFile();
+        QFileInfo info(fname);
+        if (info.exists())
+        {
+            if (accepted_types.contains(info.suffix().trimmed(), Qt::CaseInsensitive))
+                // do whatever you need to do with fname variable
+                //qDebug() << url;
+                qDebug() << fname;
+                open_file(fname.toLocal8Bit().data());
+        }
+    }
+}
+
+void MainWindow::open_file(string path2file){
+    QElapsedTimer timer;
+    timer.start();
+    signal = read_signal_file(path2file, true);
+
+    qDebug() << "The file opening took" << timer.elapsed() << "milliseconds";
+
+    // TO DO - fallbacks for eror when file is not valid, is empty etc.
+    // TO DO - open dropped files
+    // TO DO - update maincurve? delete it first?
+
+    file_open = 1; // 1 if file is loaded
+    viewtime = 0; //reset viewtime
+    //maincurve->update();
+};
 
 void MainWindow::show_about_dialog()
 {
@@ -98,7 +255,13 @@ void MainWindow::show_about_dialog()
 
 void MainWindow::show_patient_info()
 {
-    hdrwindow hdrwindow(this);
+    if (file_open){
+        hdrwindow hdrwindow(this);
+    }
+    else{
+        return;
+    }
+
 }
 
 void MainWindow::show_kb_shortcuts()
@@ -140,7 +303,7 @@ void MainWindow::show_kb_shortcuts()
 void MainWindow::shift_page_right()
 {
 
-    if(!files_open)  return;
+    if(!file_open)  return;
 
     if(viewtime >= lengthOfFile - pagetime) return;
 
@@ -153,7 +316,7 @@ void MainWindow::shift_page_right()
 void MainWindow::shift_page_left()
 {
 
-    if(!files_open)  return;
+    if(!file_open)  return;
 
     if(viewtime == 0) return;
 
@@ -166,7 +329,7 @@ void MainWindow::shift_page_left()
 void MainWindow::next_page()
 {
 
-    if(!files_open)  return;
+    if(!file_open)  return;
 
     if(viewtime >= lengthOfFile - pagetime) return;
 
@@ -179,7 +342,7 @@ void MainWindow::next_page()
 void MainWindow::previous_page()
 {
 
-    if(!files_open)  return;
+    if(!file_open)  return;
     if(viewtime == 0) return;
 
     if(viewtime <= pagetime){
@@ -196,7 +359,7 @@ void MainWindow::previous_page()
 void MainWindow::first_page()
 {
 
-    if(!files_open)  return;
+    if(!file_open)  return;
     if(viewtime == 0) return;
 
     viewtime = 0;
@@ -207,7 +370,7 @@ void MainWindow::first_page()
 void MainWindow::last_page()
 {
 
-    if(!files_open)  return;
+    if(!file_open)  return;
 
     viewtime = lengthOfFile - pagetime;
 

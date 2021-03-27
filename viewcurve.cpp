@@ -140,7 +140,7 @@ void ViewCurve::paintEvent(QPaintEvent *event)
 void ViewCurve::wheelEvent(QWheelEvent *wheel_event)
 {
 
-    if(mainwindow->files_open == 0)  return;
+    if(mainwindow->file_open == 0)  return;
     qDebug() << wheel_event->angleDelta().y();
     if(wheel_event->angleDelta().y() > 0){
         if (mainwindow->mouseWheel == 1)  mainwindow->shift_page_left();
