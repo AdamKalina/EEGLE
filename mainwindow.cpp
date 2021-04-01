@@ -74,13 +74,57 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     // ======== Timescale ========
+    //define actions
+    BLdefaultAction = new QAction(tr("xxx s/cm (BrainLab default)"), this);
+    BLdefaultAction->setCheckable(true);
+
+    fiveCmPerSec = new QAction(("5 cm/s"),this);
+    fiveCmPerSec->setCheckable(true);
+
+    twoAndHalfCmPerSec = new QAction(("2.5 cm/s"),this);
+    twoAndHalfCmPerSec->setCheckable(true);
+
+    fiveSecPerPageAction = new QAction(tr("5 s/page"), this);
+    fiveSecPerPageAction->setCheckable(true);
+
+    tenSecPerPageAction = new QAction(tr("10 s/page"),this);
+    tenSecPerPageAction->setCheckable(true);
+
+    fifteenSecPerPageAction = new QAction(tr("15 s/page"),this);
+    fifteenSecPerPageAction->setCheckable(true);
+
+    twentySecPerPageAction = new QAction(tr("20 s/page"),this);
+    twentySecPerPageAction->setCheckable(true);
+
+    thirtySecPerPageAction = new QAction(tr("30 s/page"), this);
+    thirtySecPerPageAction->setCheckable(true);
+
+
+    // create the group to make options mutually exclusive
+    timescalegroup = new QActionGroup(this);
+    timescalegroup->addAction(BLdefaultAction);
+    timescalegroup->addAction(twoAndHalfCmPerSec);
+    timescalegroup->addAction(fiveCmPerSec);
+    timescalegroup->addAction(fiveSecPerPageAction);
+    timescalegroup->addAction(tenSecPerPageAction);
+    timescalegroup->addAction(fifteenSecPerPageAction);
+    timescalegroup->addAction(twentySecPerPageAction);
+    timescalegroup->addAction(thirtySecPerPageAction);
+
+    // construct the menu
     timemenu = new QMenu(this);
     timemenu->setTitle("&Timescale");
     timemenu->addAction("Fixed resolution");
-    fixedresolutiongroup = new QActionGroup(this);
+    timemenu->addAction(BLdefaultAction);
+    timemenu->addAction(twoAndHalfCmPerSec);
+    timemenu->addAction(fiveCmPerSec);
     timemenu->addSeparator();
     timemenu->addAction("Fixed page range");
-    fixedpagegroup = new QActionGroup(this);
+    timemenu->addAction(fiveSecPerPageAction);
+    timemenu->addAction(tenSecPerPageAction);
+    timemenu->addAction(fifteenSecPerPageAction);
+    timemenu->addAction(twentySecPerPageAction);
+    timemenu->addAction(thirtySecPerPageAction);
     menubar->addMenu(timemenu);
 
     // ======== Amplitude ========
@@ -91,6 +135,7 @@ MainWindow::MainWindow(QWidget *parent)
     // ======== Montages ========
     montagemenu = new QMenu(this);
     montagemenu->setTitle("&Montage");
+    // auto-generate these
     menubar->addMenu(montagemenu);
 
 
@@ -162,18 +207,36 @@ void MainWindow::test_patinfo(Measurement *patinfo){
     cout << ctime(&epoch) << endl;
 }
 
+
+void MainWindow::initialize()
+{
+    QStringList arguments = QCoreApplication::arguments();
+    // Now you can parse the arguments *after* the main window has been created.
+    //qDebug() << arguments[1];
+    //qDebug() << arguments.size();
+    // accept only one arguement from the command line
+    if(arguments.size() == 2){
+        open_file(arguments[1].toLocal8Bit().data());
+    }
+
+}
+
 void MainWindow::open_file_dialog(){
 
     // use toLocal8Bit() for converting QString to std::string
     path2file = QFileDialog::getOpenFileName(this, tr("Open BrainLab EEG file"), "D:/Dropbox/Share", tr("BrainLab Files (*.sig)")).toLocal8Bit().data();
-    open_file(path2file);
 
+    if(path2file.empty()){
+        return;
+    }
+
+    open_file(path2file);
 };
 
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 {
-    // accept only files to being dragged over the mainwindow
+    // accept files only to being dragged over the mainwindow
     if (event->mimeData()->hasUrls())
         event->acceptProposedAction();
 }
@@ -203,6 +266,7 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 
 void MainWindow::dropEvent(QDropEvent* e)
 {
+    // TO DO - accepty only the fist file when dropped multiple (or open them in new window?)
     QStringList accepted_types;
     accepted_types << "sig";
     foreach(const QUrl & url, e->mimeData()->urls())
@@ -215,7 +279,7 @@ void MainWindow::dropEvent(QDropEvent* e)
                 // do whatever you need to do with fname variable
                 //qDebug() << url;
                 qDebug() << fname;
-                open_file(fname.toLocal8Bit().data());
+            open_file(fname.toLocal8Bit().data());
         }
     }
 }
@@ -228,7 +292,7 @@ void MainWindow::open_file(string path2file){
     qDebug() << "The file opening took" << timer.elapsed() << "milliseconds";
 
     // TO DO - fallbacks for eror when file is not valid, is empty etc.
-    // TO DO - open dropped files
+    // TO DO - open dropped files --> maincurve is not updated until focus is back on EEGle
     // TO DO - update maincurve? delete it first?
 
     file_open = 1; // 1 if file is loaded

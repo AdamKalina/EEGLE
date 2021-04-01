@@ -42,7 +42,7 @@ public:
     // Variables
 
     //defaults - TO DO - class that stores default options?
-    int testing = 1;
+    int testing = 0;
     int file_open = 0;
     long long pagetime = 5; // number of seconds to show on the screen
     long long viewtime = 0; //start of left edge of viewed page in seconds
@@ -100,12 +100,21 @@ private:
     QActionGroup *mousewheelgroup,
     *keyboardgroup,
     *fixedpagegroup,
-    *fixedresolutiongroup;
+    *fixedresolutiongroup,
+    *timescalegroup;
 
     QAction *mousePageAction,
     *mouseStepAction,
     *BrainLabAction,
-    *NicOneAction;
+    *NicOneAction,
+    *BLdefaultAction,
+    *fiveCmPerSec,
+    *twoAndHalfCmPerSec,
+    *fiveSecPerPageAction,
+    *tenSecPerPageAction,
+    *fifteenSecPerPageAction,
+    *twentySecPerPageAction,
+    *thirtySecPerPageAction;
 
 public slots:
     void show_about_dialog();
@@ -117,6 +126,7 @@ public slots:
     void first_page();
     void last_page();
     void open_file_dialog();
+    void initialize();
 
 
 private slots:
