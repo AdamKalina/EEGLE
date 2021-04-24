@@ -1,5 +1,5 @@
-#ifndef HEADER_FILE_NAME
-#define HEADER_FILE_NAME
+#ifndef READ_SIGNAL_FILE_H
+#define READ_SIGNAL_FILE_H
 
 #include <iostream>
 #include <iomanip>

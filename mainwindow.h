@@ -19,6 +19,7 @@
 #include "read_signal_file.h"
 #include "show_hdr.h"
 #include "viewcurve.h"
+//#include "third_party\fidlib-0.9.10\fidlib.h"
 
 class ViewCurve;
 
@@ -52,6 +53,7 @@ public:
 
     int foo;
     long long lengthOfFile;
+    int notch = 0;
 
     // Methods
 

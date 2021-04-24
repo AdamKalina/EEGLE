@@ -54,6 +54,8 @@ void decode_time(long time)
     int s = floor(time / 1000);
     s = s % 60;
     int ms = time % 1000;
+
+    cout << h << ":" << min << ":" << s << "." << ms << endl;
 }
 
 template <typename T>
@@ -88,7 +90,10 @@ vector<string> readChannelChar(ByteArray &a, fstream &file, int nch)
 
 void whereAmI(fstream &file)
 {
-    cout << "Position in file: " << file.tellg() << endl;
+    int testing = 1;
+    if(testing){
+       cout << "Position in file: " << file.tellg() << endl;
+    }
 }
 
 SignalHeader read_signal_header(fstream &file)
@@ -331,10 +336,42 @@ vector<Event> get_selected_events_4_types(vector<Event> events, int type)
     return selected;
 }
 
+void read_display_montages(fstream &file, long offset, long size){
+    file.seekg(offset);
+    cout << "display montages start at " << offset<<endl;
+    cout << "display montages size: " << size<<endl << endl;
+
+    cout << "beginning read_display_montages: "; whereAmI(file);
+    //nevents = 10240;
+    short tcount;
+    file.read(reinterpret_cast<char *>(&tcount), sizeof(tcount)); // some kind of buffer?
+
+    //cout << "tcount: "<<tcount << endl;
+    whereAmI(file);
+
+    char montageName[33];
+    char lead[9];
+
+    file.read(reinterpret_cast<char *>(&montageName), sizeof(montageName));
+
+    //cout << "montage name: " << montageName << endl;
+
+    file.seekg(1120,ios_base::cur);
+    vector<string> leads = readChannelChar(lead, file, 24);
+
+    for(int i = 0; i < leads.size(); i++){
+        //file.read(reinterpret_cast<char *>(&lead), sizeof(lead));
+        //cout << leads[i] << endl;
+    }
+    cout << endl;
+
+}
+
+
 Spages read_signal_pages(fstream &file, bool read_signal_data, long file_size, long offset, int page_size, int epoch_length, int channels_used, vector<Channel> channels)
 {
-    cout << "Begining of read_signal_pages: "; whereAmI(file);
-    cout << "Channels used: " << channels_used << endl;
+    //cout << "Begining of read_signal_pages: "; whereAmI(file);
+    //cout << "Channels used: " << channels_used << endl;
 
     int header_length = 6;
     short h;
@@ -368,6 +405,10 @@ Spages read_signal_pages(fstream &file, bool read_signal_data, long file_size, l
         file.read(reinterpret_cast<char *>(&page.time), sizeof(page.time));
         pages.push_back(page); // or should I use insert?
         //cout << "page filling: " << page.filling << " page time: " << page.time << endl;
+
+        //std::cout << "page time: " << page.time << endl;
+        //decode_time(page.time);
+
         if (page.filling != 0)
         {
             stop = true;
@@ -488,10 +529,11 @@ SignalFile read_signal_file(string file_name, bool read_signal_data){
     signal.store_events = store_events_list.size();
     cout << "number of channels used: "<< signal.recorder_info.numberOfChannelsUsed << endl;
 
-    // TO DO - read display montage at between end of read_recorder_info and beginning of read_events
     // TO DO - read additional montages at position signal.data_table.display_montages_info.offset;
+    read_display_montages(file, signal.data_table.display_montages_info.offset, signal.data_table.display_montages_info.size);
 
     //spages
+    // TO DO - construct time vector from signal_pages
     Spages spages = read_signal_pages(file, true, file_size, signal.data_table.signal_info.offset, signal.data_table.signal_info.size, 30, signal.recorder_info.numberOfChannelsUsed, signal.recorder_info.channels);
     signal.signal_pages = spages.pages;
     signal.signal_data = spages.esignals;

@@ -42,6 +42,7 @@ MainWindow::MainWindow(QWidget *parent)
     viewtime = 0; //start of left edge of viewed page in seconds
     pagetime = 5; // number of seconds to show on the screen
     mouseWheel = 0; //1 = step, 0 = page
+    lengthOfFile = (signal.recorder_info.epochLengthInSamples/250)*signal.signal_pages.size();
 
     //Deprecated - usable only for private and protected variable
     //foo = 88;
@@ -297,6 +298,8 @@ void MainWindow::open_file(string path2file){
 
     file_open = 1; // 1 if file is loaded
     viewtime = 0; //reset viewtime
+    lengthOfFile = (signal.signal_data[1].size() - std::count(signal.signal_data[1].begin(), signal.signal_data[1].end(), 0))/signal.recorder_info.channels[1].sampling_rate;//number of non-zero samples/sampling frequency
+    qDebug() << "lengthOfFile: " << lengthOfFile << " seconds";
     //maincurve->update();
 };
 
@@ -372,7 +375,7 @@ void MainWindow::shift_page_right()
     if(viewtime >= lengthOfFile - pagetime) return;
 
     viewtime += 1;
-    qDebug() << "viewtime: " << viewtime;
+    qDebug() << "viewtime: " << viewtime << " s";
 
     maincurve->update();
 }
@@ -385,7 +388,7 @@ void MainWindow::shift_page_left()
     if(viewtime == 0) return;
 
     viewtime -= 1;
-    qDebug() << "viewtime: " << viewtime;
+    qDebug() << "viewtime: " << viewtime << " s";
 
     maincurve->update();
 }
@@ -398,8 +401,7 @@ void MainWindow::next_page()
     if(viewtime >= lengthOfFile - pagetime) return;
 
     viewtime += pagetime;
-    qDebug() << "viewtime: " << viewtime;
-
+    qDebug() << "viewtime: " << viewtime << " s";
     maincurve->update();
 }
 
@@ -415,7 +417,7 @@ void MainWindow::previous_page()
     else{
         viewtime -= pagetime;
     }
-    qDebug() << "viewtime: " << viewtime;
+    qDebug() << "viewtime: " << viewtime << " s";
 
     maincurve->update();
 }
@@ -425,9 +427,7 @@ void MainWindow::first_page()
 
     if(!file_open)  return;
     if(viewtime == 0) return;
-
     viewtime = 0;
-
     maincurve->update();
 }
 
@@ -435,9 +435,8 @@ void MainWindow::last_page()
 {
 
     if(!file_open)  return;
-
+    qDebug() << "last_page";
     viewtime = lengthOfFile - pagetime;
-
     maincurve->update();
 }
 

@@ -1,0 +1,7 @@
+<RCC>
+    <qresource>
+        <file>images/eagle.png</file>
+        <file>images/eagle_icon.png</file>
+        <file>images/eagle_icon.ico</file>
+    </qresource>
+</RCC>

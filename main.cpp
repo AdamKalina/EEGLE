@@ -15,28 +15,28 @@ int main(int argc, char *argv[]) // argc = argument cout, argv = arguments
 
     qDebug() << app.arguments().size();
     if(app.arguments().size() == 2){
-        qDebug() << "argv" << app.arguments().at(1).toLocal8Bit().data();
+        //qDebug() << "argv" << app.arguments().at(1).toLocal8Bit().data();
     }
 
     MainWindow w;
-    w.setWindowTitle("EEGle");
+    w.setWindowTitle("EEGLE");
     //w.setWindowState(Qt::WindowMaximized);
+    w.setWindowIcon(QIcon(":/images/eagle_icon.png"));
     w.setMinimumHeight(820);
     w.setMinimumWidth(1200);
 
     QTimer::singleShot(0, & w, SLOT(initialize())); // delays the parsing of command line argument after the mainwindow is loaded
 
-
     // define the splash screen
-    // TO DO - relative path using https://doc.qt.io/qt-5/resources.html
-    // make the version variable
-    QPixmap pixmap("D:/Dropbox/Scripts/Cpp/EEGle/pixmaps/eagle.png");
+    // relative path using https://doc.qt.io/qt-5/resources.html
+    // TO DO - put the version into common variable
+    QPixmap pixmap(":images/eagle.png");
 
     QPainter p(&pixmap);
     QFont sansFont("Century Gothic", 10);
     p.setFont(sansFont);
     p.setPen(Qt::black);
-    p.drawText(250, 300, 300, 30, Qt::AlignLeft | Qt::TextSingleLine, "version 0.2");
+    p.drawText(200, 340, 300, 30, Qt::AlignLeft | Qt::TextSingleLine, "version 0.2");
 
     QSplashScreen splash(pixmap, Qt::WindowStaysOnTopHint);
 

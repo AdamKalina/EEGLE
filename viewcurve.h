@@ -5,7 +5,12 @@
 #include <QStaticText>
 #include <QShortcut>
 #include <QMouseEvent>
+#include <QScreen>
+#include "third_party\fidlib\fidlib.h"
 #include "mainwindow.h"
+#include <stdio.h>
+#include <string.h>
+#include <cstring>
 
 
 class MainWindow;
@@ -21,6 +26,7 @@ public:
     //void drawCurve_stage_1(QPainter *painter=NULL);
     MainWindow *mainwindow;
     //SignalFile SF;
+    FidFilter *ff;
 
     QShortcut *shift_page_left_shortcut,
     *shift_page_right_shortcut,
