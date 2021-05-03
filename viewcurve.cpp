@@ -18,55 +18,15 @@ ViewCurve::ViewCurve(QWidget *w_parent) : QWidget(w_parent)
     QScreen *screen = QGuiApplication::primaryScreen();
     qDebug() << "QScreen geometry height in px: " << screen->geometry().height();
     qDebug() <<  "QScreen geometry width in px" << screen->geometry().width();
-
     qDebug() << "Screen's physical size in mm: " << screen->physicalSize();
-
     qDebug() << "Screen's physical height in mm: " << screen->physicalSize().height(); // screen's physical size (in millimeters)
     qDebug() << "Screen's physical width in mm: " << screen->physicalSize().width();
-
     qDebug() << "Physical dots per mm X: " << screen->geometry().width()/screen->physicalSize().width();
     qDebug() << "Physical dots per mm Y: " << screen->geometry().height()/screen->physicalSize().height();
-
-
-
     qDebug() << "Physical dots per inch: " << screen->physicalDotsPerInch(); //number of physical dots or pixels per inch
-
     qDebug() << "Physical dots per mm: " << screen->physicalDotsPerInch()*0.0393701; //number of physical dots or pixels per inch
 
-
-
     // BrainLab window 310x260 mm
-
-
-    if (mainwindow->notch){
-        double fs = 250;
-        int order = 1;
-        int frequency = 50;
-        char *filter_spec;
-        char spec_str_1[256];
-        char *err;
-        //FidFilter *ff;
-
-        filter_spec = spec_str_1;
-
-        snprintf(spec_str_1, 256, "BsRe/%i/%f", order, frequency);
-        //err= fid_parse(double rate, char **pp, FidFilter **ffp);
-        //err = fid_parse(rate, &filter_spec, &ff);
-            err = fid_parse(fs,&filter_spec, &ff);
-
-        if(err != NULL)
-          {
-            QMessageBox messagewindow(QMessageBox::Critical, "Error", err);
-            messagewindow.exec();
-            free(err);
-            return;
-          }
-        else{
-            qDebug() << "Filter created!";
-        }
-
-    }
-
 
     //qDebug() << "window height: " << mainwindow->size().height();
     //qDebug() << "window width: " << mainwindow->size().width();
@@ -153,13 +113,61 @@ void ViewCurve::paintEvent(QPaintEvent *event)
     vector<vector<double>> viewbuf;
 
 
+    if (mainwindow->notch){
+        double fs = 250;
+        int order = 1;
+        float frequency = 50;
+        char *filter_spec;
+        char spec_str_1[256];
+        char *err;
+
+        //FidFilter *ff;
+        free(fbuf1);
+        fid_run_free(run);
+        free(ff);
+
+        filter_spec = spec_str_1;
+        spec_str_1[0] = 0;
+
+        snprintf(spec_str_1, 256, "BsRe/%i/%f", order, frequency);
+        qDebug() << spec_str_1;
+        //err= fid_parse(double rate, char **pp, FidFilter **ffp);
+        //err = fid_parse(rate, &filter_spec, &ff);
+            err = fid_parse(fs,&filter_spec, &ff);
+
+        if(err != NULL)
+          {
+            QMessageBox messagewindow(QMessageBox::Critical, "Error", err);
+            messagewindow.exec();
+            free(err);
+            return;
+          }
+        else{
+            qDebug() << "Filter created!";
+        }
+
+        run= fid_run_new(ff, &funcp);
+        fbuf1= fid_run_newbuf(run);
+    }
+
+
     for (int i = 0; i < mainwindow->signal.recorder_info.numberOfChannelsUsed;i++){
         int timeWindow = mainwindow->signal.recorder_info.channels[i].sampling_rate*second2draw;
         long long windowStart = mainwindow->viewtime*mainwindow->signal.recorder_info.channels[i].sampling_rate;
 
         vector<double> temp_channel(mainwindow->signal.signal_data[i].begin()+windowStart, mainwindow->signal.signal_data[i].begin() + windowStart + timeWindow);
+
+        // filtering
+        if (mainwindow->notch){
+        for (int j = 0; j < temp_channel.size(); j++){
+            temp_channel[j]= funcp(fbuf1, temp_channel[j]);
+        }
+        fid_run_zapbuf(fbuf1);
+        }
+
         viewbuf.push_back(temp_channel);
     }
+
 
     // painter definition
     QPen signal_pen(Qt::black, 1, Qt::SolidLine,Qt::SquareCap, Qt::BevelJoin);
@@ -228,5 +236,4 @@ ViewCurve::~ViewCurve()
 {
     delete signal_pen;
     delete grid_pen;
-    free(ff);
 }

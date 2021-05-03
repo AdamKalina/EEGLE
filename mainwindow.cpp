@@ -188,12 +188,35 @@ MainWindow::MainWindow(QWidget *parent)
     settingsmenu->addAction(mouseStepAction);
     menubar->addMenu(settingsmenu);
 
+    connect(mousePageAction,SIGNAL(triggered()),this,SLOT(mousewheel_mode_page()));
+    connect(mouseStepAction,SIGNAL(triggered()),this,SLOT(mousewheel_mode_step()));
+
     // ======== Help menu ========
     helpmenu = new QMenu(this);
     helpmenu->setTitle("&Help");
     helpmenu->addAction("About", this, SLOT(show_about_dialog()));
     helpmenu->addAction("Keyboard shortcuts", this, SLOT(show_kb_shortcuts()));
     menubar->addMenu(helpmenu);
+
+    // ====== Notch menu ======
+    // TO DO - button on toolbar
+    notchmenu = new QMenu(this);
+    notchmenu->setTitle("&Notch");
+    notchOffAction = new QAction(tr("Off"), this);
+    notchOffAction->setCheckable(true);
+    notchOffAction->setChecked(true);
+    notchOnAction = new QAction(tr("On"), this);
+    notchOnAction->setCheckable(true);
+
+    notchgroup = new QActionGroup(this);
+    notchgroup->addAction(notchOffAction);
+    notchgroup->addAction(notchOnAction);
+    notchmenu->addAction(notchOffAction);
+    notchmenu->addAction(notchOnAction);
+    menubar->addMenu(notchmenu);
+
+    connect(notchOffAction,SIGNAL(triggered()),this,SLOT(change_notch_off()));
+    connect(notchOnAction,SIGNAL(triggered()),this,SLOT(change_notch_on()));
 
 }
 
@@ -268,6 +291,7 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 void MainWindow::dropEvent(QDropEvent* e)
 {
     // TO DO - accepty only the fist file when dropped multiple (or open them in new window?)
+    // TO DO - maincurve is not redrawn until you click in the mainwindow
     QStringList accepted_types;
     accepted_types << "sig";
     foreach(const QUrl & url, e->mimeData()->urls())
@@ -441,5 +465,25 @@ void MainWindow::last_page()
 }
 
 
+// TO DO - find ho to do this in one step using one slot
+void MainWindow::mousewheel_mode_page(){
+    qDebug() << "mouse wheel mode = page";
+    this->mouseWheel = 0;
+}
 
+void MainWindow::mousewheel_mode_step(){
+    qDebug() << "mouse wheel mode = step";
+    this->mouseWheel = 1;
+}
 
+void MainWindow::change_notch_on(){
+    notch = 1;
+    qDebug() << notch;
+    maincurve->update();
+}
+
+void MainWindow::change_notch_off(){
+    notch = 0;
+    qDebug() << notch;
+    maincurve->update();
+}

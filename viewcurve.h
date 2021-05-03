@@ -25,8 +25,14 @@ public:
 
     //void drawCurve_stage_1(QPainter *painter=NULL);
     MainWindow *mainwindow;
+
     //SignalFile SF;
+
+    //fidlib
     FidFilter *ff;
+    FidRun *run;
+    FidFunc *funcp;
+    void *fbuf1, *fbuf2;
 
     QShortcut *shift_page_left_shortcut,
     *shift_page_right_shortcut,

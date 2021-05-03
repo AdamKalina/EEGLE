@@ -45,7 +45,7 @@ public:
     //defaults - TO DO - class that stores default options?
     int testing = 0;
     int file_open = 0;
-    long long pagetime = 5; // number of seconds to show on the screen
+    long long pagetime = 10; // number of seconds to show on the screen
     long long viewtime = 0; //start of left edge of viewed page in seconds
     int mouseWheel; //1 = step, 0 = page
     string path2file;
@@ -53,7 +53,7 @@ public:
 
     int foo;
     long long lengthOfFile;
-    int notch = 0;
+    int notch = 0; // notch filter on/off
 
     // Methods
 
@@ -97,13 +97,15 @@ private:
     *timemenu,
     *amplitudemenu,
     *montagemenu,
-    *settingsmenu;
+    *settingsmenu,
+    *notchmenu;
 
     QActionGroup *mousewheelgroup,
     *keyboardgroup,
     *fixedpagegroup,
     *fixedresolutiongroup,
-    *timescalegroup;
+    *timescalegroup,
+    *notchgroup;
 
     QAction *mousePageAction,
     *mouseStepAction,
@@ -116,7 +118,9 @@ private:
     *tenSecPerPageAction,
     *fifteenSecPerPageAction,
     *twentySecPerPageAction,
-    *thirtySecPerPageAction;
+    *thirtySecPerPageAction,
+    *notchOnAction,
+    *notchOffAction;
 
 public slots:
     void show_about_dialog();
@@ -129,6 +133,10 @@ public slots:
     void last_page();
     void open_file_dialog();
     void initialize();
+    void mousewheel_mode_page();
+    void mousewheel_mode_step();
+    void change_notch_on();
+    void change_notch_off();
 
 
 private slots:
