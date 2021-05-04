@@ -121,6 +121,8 @@ void ViewCurve::paintEvent(QPaintEvent *event)
         char spec_str_1[256];
         char *err;
 
+
+        // ====== FILTERING ======
         //FidFilter *ff;
         free(fbuf1);
         fid_run_free(run);
@@ -150,7 +152,7 @@ void ViewCurve::paintEvent(QPaintEvent *event)
         fbuf1= fid_run_newbuf(run);
     }
 
-
+    // ====== LOAD DATA TO VIEWBUF ======
     for (int i = 0; i < mainwindow->signal.recorder_info.numberOfChannelsUsed;i++){
         int timeWindow = mainwindow->signal.recorder_info.channels[i].sampling_rate*second2draw;
         long long windowStart = mainwindow->viewtime*mainwindow->signal.recorder_info.channels[i].sampling_rate;
@@ -169,7 +171,7 @@ void ViewCurve::paintEvent(QPaintEvent *event)
     }
 
 
-    // painter definition
+    // ====== painter definition ======
     QPen signal_pen(Qt::black, 1, Qt::SolidLine,Qt::SquareCap, Qt::BevelJoin);
     QPen grid_pen(Qt::gray, 1, Qt::SolidLine,Qt::SquareCap, Qt::BevelJoin);
 
@@ -179,14 +181,15 @@ void ViewCurve::paintEvent(QPaintEvent *event)
     painter.setFont(font);
 
     // TO DO - split grid, signals and labels to different processes
-    // draw grids
+    // ====== DRAW GRIDS ======
     for (int i = 1; i < second2draw; i++){
+        // TO DO - replace 250 with variable - e.g. signal.recorder_info.channels[i].sampling_rate
         painter.setPen(grid_pen);
         painter.drawLine(LeftMargin + i*250,0,LeftMargin + i*250,1000);
     }
 
 
-    // draw signals
+    // ====== DRAW SIGNALS =======
     for (int i = 0; i < mainwindow->signal.recorder_info.numberOfChannelsUsed;i++){
         painter.setPen(grid_pen);
         painter.drawLine(LeftMargin,fromTop + offset*i,1000+LeftMargin,fromTop + offset*i);
@@ -210,7 +213,7 @@ void ViewCurve::paintEvent(QPaintEvent *event)
         }
     }
 
-    //draw time
+    //draw time!
     // TO DO - move it to separate widget
     painter.drawText(1, fromTop+offset*mainwindow->signal.recorder_info.numberOfChannelsUsed, QString::fromStdString("Time:"));
 }

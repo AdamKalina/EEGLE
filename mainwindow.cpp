@@ -39,9 +39,6 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     // variables for diplaying EEG
-    viewtime = 0; //start of left edge of viewed page in seconds
-    pagetime = 5; // number of seconds to show on the screen
-    mouseWheel = 0; //1 = step, 0 = page
     lengthOfFile = (signal.recorder_info.epochLengthInSamples/250)*signal.signal_pages.size();
 
     //Deprecated - usable only for private and protected variable
@@ -58,6 +55,9 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(maincurve);
 
     //menus
+    createToolbars();
+
+
     menubar = menuBar();
 
     // ======== File menu ========
@@ -197,27 +197,6 @@ MainWindow::MainWindow(QWidget *parent)
     helpmenu->addAction("About", this, SLOT(show_about_dialog()));
     helpmenu->addAction("Keyboard shortcuts", this, SLOT(show_kb_shortcuts()));
     menubar->addMenu(helpmenu);
-
-    // ====== Notch menu ======
-    // TO DO - button on toolbar
-    notchmenu = new QMenu(this);
-    notchmenu->setTitle("&Notch");
-    notchOffAction = new QAction(tr("Off"), this);
-    notchOffAction->setCheckable(true);
-    notchOffAction->setChecked(true);
-    notchOnAction = new QAction(tr("On"), this);
-    notchOnAction->setCheckable(true);
-
-    notchgroup = new QActionGroup(this);
-    notchgroup->addAction(notchOffAction);
-    notchgroup->addAction(notchOnAction);
-    notchmenu->addAction(notchOffAction);
-    notchmenu->addAction(notchOnAction);
-    menubar->addMenu(notchmenu);
-
-    connect(notchOffAction,SIGNAL(triggered()),this,SLOT(change_notch_off()));
-    connect(notchOnAction,SIGNAL(triggered()),this,SLOT(change_notch_on()));
-
 }
 
 void MainWindow::test_patinfo(Measurement *patinfo){
@@ -393,7 +372,6 @@ void MainWindow::show_kb_shortcuts()
 
 void MainWindow::shift_page_right()
 {
-
     if(!file_open)  return;
 
     if(viewtime >= lengthOfFile - pagetime) return;
@@ -406,7 +384,6 @@ void MainWindow::shift_page_right()
 
 void MainWindow::shift_page_left()
 {
-
     if(!file_open)  return;
 
     if(viewtime == 0) return;
@@ -419,7 +396,6 @@ void MainWindow::shift_page_left()
 
 void MainWindow::next_page()
 {
-
     if(!file_open)  return;
 
     if(viewtime >= lengthOfFile - pagetime) return;
@@ -431,7 +407,6 @@ void MainWindow::next_page()
 
 void MainWindow::previous_page()
 {
-
     if(!file_open)  return;
     if(viewtime == 0) return;
 
@@ -448,7 +423,6 @@ void MainWindow::previous_page()
 
 void MainWindow::first_page()
 {
-
     if(!file_open)  return;
     if(viewtime == 0) return;
     viewtime = 0;
@@ -457,7 +431,6 @@ void MainWindow::first_page()
 
 void MainWindow::last_page()
 {
-
     if(!file_open)  return;
     qDebug() << "last_page";
     viewtime = lengthOfFile - pagetime;
@@ -476,14 +449,38 @@ void MainWindow::mousewheel_mode_step(){
     this->mouseWheel = 1;
 }
 
-void MainWindow::change_notch_on(){
-    notch = 1;
-    qDebug() << notch;
-    maincurve->update();
+void MainWindow::createToolbars(){
+    QToolBar *toolBar = addToolBar(tr("Toolbar"));
+    notchButton = new QAction(tr("Notch"), this);
+    notchButton->setCheckable(true);
+    notchButton->setChecked(false);
+    toolBar->addAction(notchButton);
+    connect(notchButton, SIGNAL(toggled(bool)), this, SLOT(notchToggle(bool)));
+
+    QLabel *LFFLabel = new QLabel(tr("LFF: "));
+    QSpinBox *LFFspinBox = new QSpinBox(this); // automatic range = 0-99
+
+    toolBar->addWidget(LFFLabel);
+    toolBar->addWidget(LFFspinBox);
+
+    QLabel *HFFLabel = new QLabel(tr("  HFF: "));
+    QSpinBox *HFFspinBox = new QSpinBox(this);
+    HFFspinBox->setSingleStep(5);
+    toolBar->addWidget(HFFLabel);
+    toolBar->addWidget(HFFspinBox);
 }
 
-void MainWindow::change_notch_off(){
-    notch = 0;
-    qDebug() << notch;
-    maincurve->update();
+void MainWindow::notchToggle(bool checked)
+{
+    if (checked) {
+        // Examine the new button states.
+        notch = 1;
+        qDebug() << notch;
+        maincurve->update();
+    }
+    else{
+        notch = 0;
+        qDebug() << notch;
+        maincurve->update();
+    }
 }

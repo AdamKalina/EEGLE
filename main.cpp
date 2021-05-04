@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) // argc = argument cout, argv = arguments
     //w.setWindowState(Qt::WindowMaximized);
     w.setWindowIcon(QIcon(":/images/eagle_icon.png"));
     w.setMinimumHeight(820);
-    w.setMinimumWidth(1200);
+    w.setMinimumWidth(2400); // 1200
 
     QTimer::singleShot(0, & w, SLOT(initialize())); // delays the parsing of command line argument after the mainwindow is loaded
 

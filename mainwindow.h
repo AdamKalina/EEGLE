@@ -16,6 +16,8 @@
 #include <QElapsedTimer>
 #include <QDropEvent>
 #include <QMimeData>
+#include <QToolBar>
+#include <QDoubleSpinBox>
 #include "read_signal_file.h"
 #include "show_hdr.h"
 #include "viewcurve.h"
@@ -47,7 +49,7 @@ public:
     int file_open = 0;
     long long pagetime = 10; // number of seconds to show on the screen
     long long viewtime = 0; //start of left edge of viewed page in seconds
-    int mouseWheel; //1 = step, 0 = page
+    int mouseWheel = 0; //1 = step, 0 = page
     string path2file;
 
 
@@ -69,7 +71,7 @@ public:
     void setup_viewbuf();
     void dragEnterEvent(QDragEnterEvent *event);
     void dropEvent(QDropEvent* event);
-
+    void createToolbars();
 
 
     void setHDR(Measurement measurement){
@@ -90,6 +92,7 @@ public:
 
 private:
     QMenuBar     *menubar;
+    QToolBar *toolBar;
 
     QMenu   *filemenu,
     *infomenu,
@@ -120,7 +123,12 @@ private:
     *twentySecPerPageAction,
     *thirtySecPerPageAction,
     *notchOnAction,
-    *notchOffAction;
+    *notchOffAction,
+    *notchButton,
+    *LFF;
+
+    QLabel *LFFLabel,
+    *HFFLabel;
 
 public slots:
     void show_about_dialog();
@@ -135,8 +143,7 @@ public slots:
     void initialize();
     void mousewheel_mode_page();
     void mousewheel_mode_step();
-    void change_notch_on();
-    void change_notch_off();
+    void notchToggle(bool checked);
 
 
 private slots:
