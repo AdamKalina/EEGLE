@@ -38,8 +38,7 @@ hdrwindow::hdrwindow(QWidget *w_parent)
     QString technician = codec->toUnicode(mainwindow->signal.measurement.technician);
     label[3] = new QLabel (QString("Technician: %1").arg(technician));
     label[4] = new QLabel (QString("Sex: %1").arg(mainwindow->signal.measurement.sex));
-    time_t epoch = decode_date_time(mainwindow->signal.measurement.start_date, mainwindow->signal.measurement.start_hour);
-    QDateTime qtime = QDateTime::fromTime_t(epoch);
+    QDateTime qtime = decode_date_time(mainwindow->signal.measurement.start_date, mainwindow->signal.measurement.start_hour);
     //qDebug() << ctime(&epoch);
     //qDebug() << qtime;
     label[5] = new QLabel (QString("Start time: %1").arg(qtime.toString("dd. MM. yyyy hh:mm")));

@@ -12,32 +12,6 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowFlags(Qt::Window | Qt::MSWindowsFixedSizeDialogHint); // disable resizing by hand
     setAcceptDrops(true);
 
-    if(testing){
-        // load data
-        path2file = "D:/Dropbox/Share/B0000938.sig";
-        open_file(path2file);
-        //signal = read_signal_file(path2file, true);
-        //file_open = 1; // 1 if file is loaded
-
-        if (file_open){
-            qDebug() << "number of non-zero samples: " << signal.signal_data[1].size() - std::count(signal.signal_data[1].begin(), signal.signal_data[1].end(), 0);
-            qDebug() << "epoch length in samples: " << signal.recorder_info.epochLengthInSamples;
-            qDebug() << "num of pages: " << signal.signal_pages.size();
-            qDebug() << "length in seconds: " << (signal.recorder_info.epochLengthInSamples/250)*signal.signal_pages.size();
-            qDebug() << "length in samples: " << signal.recorder_info.epochLengthInSamples;
-            //lengthOfFile = (signal.recorder_info.epochLengthInSamples/250)*signal.signal_pages.size();
-            lengthOfFile = (signal.signal_data[1].size() - std::count(signal.signal_data[1].begin(), signal.signal_data[1].end(), 0))/signal.recorder_info.channels[1].sampling_rate;//number of non-zero samples/sampling frequency
-            qDebug() <<  lengthOfFile;
-            test_patinfo(&signal.measurement);
-
-            qDebug() << signal.recorder_info.montageName;
-            qDebug() << signal.data_table.display_montages_info.offset;
-            qDebug() << signal.data_table.display_montages_info.header_size;
-            qDebug() << signal.data_table.display_montages_info.size;
-        }
-    }
-
-
     // variables for diplaying EEG
     lengthOfFile = (signal.recorder_info.epochLengthInSamples/250)*signal.signal_pages.size();
 
@@ -199,15 +173,14 @@ MainWindow::MainWindow(QWidget *parent)
     menubar->addMenu(helpmenu);
 }
 
-void MainWindow::test_patinfo(Measurement *patinfo){
-    cout << "TEST" << endl;
-    cout << "id: " << patinfo->id << endl;
-    cout << "name: " << patinfo->name << endl;
-    cout << "doctor: " << patinfo->doctor << endl;
-    cout << "technician: " << patinfo->technician << endl;
-    cout << "sex: " << patinfo->sex << endl;
-    time_t epoch = decode_date_time(patinfo->start_date, patinfo->start_hour);
-    cout << ctime(&epoch) << endl;
+void MainWindow::test_patinfo(read_signal_file::Measurement *patinfo){
+    std::cout << "TEST" << endl;
+    std::cout << "id: " << patinfo->id << endl;
+    std::cout << "name: " << patinfo->name << endl;
+    std::cout << "doctor: " << patinfo->doctor << endl;
+    std::cout << "technician: " << patinfo->technician << endl;
+    std::cout << "sex: " << patinfo->sex << endl;
+    QDateTime epoch = decode_date_time(patinfo->start_date, patinfo->start_hour);
 }
 
 
@@ -227,7 +200,7 @@ void MainWindow::initialize()
 void MainWindow::open_file_dialog(){
 
     // use toLocal8Bit() for converting QString to std::string
-    path2file = QFileDialog::getOpenFileName(this, tr("Open BrainLab EEG file"), "D:/Dropbox/Share", tr("BrainLab Files (*.sig)")).toLocal8Bit().data();
+    path2file = QFileDialog::getOpenFileName(this, tr("Open BrainLab EEG file"), "D:/Dropbox/Script/Cpp", tr("BrainLab Files (*.sig)")).toLocal8Bit().data();
 
     if(path2file.empty()){
         return;
@@ -269,12 +242,11 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 
 void MainWindow::dropEvent(QDropEvent* e)
 {
-    // TO DO - accepty only the fist file when dropped multiple (or open them in new window?)
+    // TO DO - accepty only the first file when dropped multiple (or open them in new window?)
     // TO DO - maincurve is not redrawn until you click in the mainwindow
     QStringList accepted_types;
     accepted_types << "sig";
-    foreach(const QUrl & url, e->mimeData()->urls())
-    {
+    foreach(const QUrl & url, e->mimeData()->urls()){
         QString fname = url.toLocalFile();
         QFileInfo info(fname);
         if (info.exists())
@@ -288,10 +260,13 @@ void MainWindow::dropEvent(QDropEvent* e)
     }
 }
 
-void MainWindow::open_file(string path2file){
+void MainWindow::open_file(std::string path2file){
     QElapsedTimer timer;
     timer.start();
-    signal = read_signal_file(path2file, true);
+
+    QFileInfo infoSig(QString::fromStdString(path2file));
+    read_signal_file signalReader;
+    signal = signalReader.read_signal_file_all(infoSig, true);
 
     qDebug() << "The file opening took" << timer.elapsed() << "milliseconds";
 
@@ -301,9 +276,10 @@ void MainWindow::open_file(string path2file){
 
     file_open = 1; // 1 if file is loaded
     viewtime = 0; //reset viewtime
-    lengthOfFile = (signal.signal_data[1].size() - std::count(signal.signal_data[1].begin(), signal.signal_data[1].end(), 0))/signal.recorder_info.channels[1].sampling_rate;//number of non-zero samples/sampling frequency
-    qDebug() << "lengthOfFile: " << lengthOfFile << " seconds";
-    //maincurve->update();
+    if (signal.recorder_info.highestRate > 0) {
+        lengthOfFile = (signal.recorder_info.epochLengthInSamples / (double)signal.recorder_info.highestRate) * signal.signal_pages.size();
+    }
+    maincurve->update();
 };
 
 void MainWindow::show_about_dialog()

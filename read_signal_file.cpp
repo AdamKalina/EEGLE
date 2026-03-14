@@ -1,129 +1,132 @@
+/*
+*****************************************************************************
+*
+* Cuculus is command line application for converting EEG *.SIG files (Schwarzer BrainLab) to *.EDF
+* Copyright (C) 2022  Adam Kalina
+* email: adam.kalina89@gmail.com
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
+*****************************************************************************
+*/
+
 #include "read_signal_file.h"
 
 // function definitions
 
-time_t decode_date_time(long date, long time)
-{
-    int y = floor(date / (31 * 12));
-    int m = floor(date / 31);
+QDateTime decode_date_time(long date, long time){
+    //date = days since BC - but with some constraints to account for year with 31*12 days (and 31 days in month)
+    //int y = floor(date / (31 * 12)); // floow is not needed since integer divion always performs a floor operation inherently
+    int y = date / (31 * 12);
+    int m = date / 31;
+    int d = date % 31;
     m = m % 12;
 
-    if (m == 0)
-    {
+    //qDebug() << y << " " << m << " " << d;
+
+    if (d == 0){
+        d = 31;
+        m--;
+    }
+
+    if (m == 0){
         m = 12;
         y--;
     }
 
-    int d = date % 31;
+    //qDebug() << y << " " << m << " " << d;
 
-    if (d == 0)
-    {
-        d = 31;
-        m--;
-    }
-    //cout << y << " " << m << " " << d <<endl;
+    // time = ms since midnight
 
-    int h = floor(time / (60 * 60 * 1000));
-    int min = floor(time / (60 * 1000));
+    int h = time / (60 * 60 * 1000);
+    int min = time / (60 * 1000);
     min = min % 60;
-    int s = floor(time / 1000);
+    int s = time / 1000;
     s = s % 60;
     int ms = time % 1000;
-    //cout << h << " " << min << " " << s << " " << ms <<endl;
+    //qDebug() << h << " " << min << " " << s << " " << ms;
 
-    struct tm tm
-    {
-        0
-    };
 
-    tm.tm_year = y - 1900;
-    tm.tm_mon = m - 1;
-    tm.tm_mday = d;
-    tm.tm_hour = h;
-    tm.tm_min = min;
-    tm.tm_sec = s;
-    time_t t = mktime(&tm);
-    return t;
+    QDate startDate(y, m, d);
+    QTime startTime(h, min, s, ms);
+    QDateTime startDateTime = QDateTime(startDate,startTime).toLocalTime();
+
+    // this is kinda hack - old BrainLab does not account for time transition to daylight saving time, I need to correct it manually
+    // works fine on my computer, but it actually didnt need this correction in Motol XP computers
+    //if(startDateTime.isDaylightTime()){
+    //qDebug() << "before " << startDateTime;
+    //  startDateTime = startDateTime.addSecs(3600);
+    //qDebug() << "after " << startDateTime;
+    //}
+
+    return startDateTime;
 };
 
-void decode_time(long time)
-{
-    int h = floor(time / (60 * 60 * 1000));
-    int min = floor(time / (60 * 1000));
-    min = min % 60;
-    int s = floor(time / 1000);
-    s = s % 60;
-    int ms = time % 1000;
-
-    cout << h << ":" << min << ":" << s << "." << ms << endl;
-}
-
 template <typename T>
-vector<T> readChannel(T tch, fstream &file, int nch)
-{
-    vector<T> x;
-    //cout << "readChannel function operating on position in file: " << file.tellg() << endl;
-    for (int i = 0; i < nch; i++)
-    {
-        file.read(reinterpret_cast<char *>(&tch), sizeof(tch));
-        x.push_back(tch);
-        //cout << x[i] << " ";
-    }
-    //cout <<endl;
+std::vector<T> readChannel(std::fstream &file, int nch){
+    std::vector<T> x(nch); // Pre-allocate exactly 'nch' elements
+    // Read the whole block of data in one go directly into the vector's memory
+    file.read(reinterpret_cast<char *>(x.data()), nch * sizeof(T));
     return x;
 }
 
 template <typename ByteArray>
-vector<string> readChannelChar(ByteArray &a, fstream &file, int nch)
-{
-    vector<string> x;
-    //cout << "readChannelChar function operating on position in file: " << file.tellg() << endl;
-    for (int i = 0; i < nch; i++)
-    {
+std::vector<std::string> readChannelChar(ByteArray &a, std::fstream &file, int nch){
+    std::vector<std::string> x;
+    for (int i = 0; i < nch; i++){
         file.read(reinterpret_cast<char *>(&a), sizeof(a));
         x.push_back(a);
-        //cout << x[i] << " ";
     }
-    //cout <<endl;
     return x;
 }
 
-void whereAmI(fstream &file)
-{
+void whereAmI(std::fstream &file){
     int testing = 1;
     if(testing){
-       cout << "Position in file: " << file.tellg() << endl;
+        std::cout << "Position in file: " << file.tellg() << std::endl;
     }
-}
+};
 
-SignalHeader read_signal_header(fstream &file)
-{
+read_signal_file::SignalHeader read_signal_file::read_signal_header(){
     SignalHeader stud;
     file.read(reinterpret_cast<char *>(&stud.program_id), sizeof(stud.program_id));
+    //std::cout << "program id: " << stud.program_id << std::endl;
     file.read(reinterpret_cast<char *>(&stud.signal_id), sizeof(stud.signal_id));
+    //std::cout << "signal id: " << stud.signal_id << std::endl;
     file.read(reinterpret_cast<char *>(&stud.version_id), sizeof(stud.version_id));
+    //std::cout << "version id: " << stud.version_id << std::endl;
     file.read(reinterpret_cast<char *>(&stud.read_only), sizeof(stud.read_only));
+    //std::cout << "read only: " << stud.read_only << std::endl;
     return stud;
 }
 
-DataTable read_data_table(fstream &file)
-{
+read_signal_file::DataTable read_signal_file::read_data_table(){
     DataTable data_table;
-    long y;
-    vector<long> dt = readChannel(y, file, 17);
-    data_table.measurement_info = Block{dt[0], dt[1], NULL};
-    data_table.recorder_montage_info = Block{dt[2], dt[3]};
-    data_table.events_info = Block{dt[4], dt[5]};
-    data_table.notes_info = Block{dt[6], dt[7]};
-    data_table.impedance_info = Block{dt[8], dt[9]};
-    data_table.display_montages_info = Block{dt[10], dt[11]};
-    data_table.stimulator_info = Block{dt[12], dt[13]};
-    data_table.signal_info = Block{dt[14], dt[15], dt[16]};
-    return data_table;
+    long y = 0;
+    std::vector<long> dt = readChannel<long>(file, 17);
+    data_table.measurement_info = Block{dt[0], dt[1], 0};
+data_table.recorder_montage_info = Block{dt[2], dt[3],0};
+data_table.events_info = Block{dt[4], dt[5],0};
+data_table.notes_info = Block{dt[6], dt[7],0};
+data_table.impedance_info = Block{dt[8], dt[9],0};
+data_table.display_montages_info = Block{dt[10], dt[11],0};
+data_table.stimulator_info = Block{dt[12], dt[13],0};
+data_table.signal_info = Block{dt[14], dt[15], dt[16]};
+return data_table;
 }
 
-Measurement read_measurement(fstream &file, long offset, long size)
-{
+read_signal_file::Measurement read_signal_file::readMeasurement(long offset){
     Measurement measurement;
     file.seekg(offset);
     file.read(measurement.id, sizeof(measurement.id));
@@ -157,8 +160,7 @@ Measurement read_measurement(fstream &file, long offset, long size)
     return measurement;
 }
 
-RecorderMontageInfo read_recorder_info(fstream &file, long offset, long size)
-{
+read_signal_file::RecorderMontageInfo read_signal_file::read_recorder_info(long offset){
     RecorderMontageInfo recorder_info;
     file.seekg(offset);
     file.read(recorder_info.name, sizeof(recorder_info.name));
@@ -173,10 +175,9 @@ RecorderMontageInfo read_recorder_info(fstream &file, long offset, long size)
     file.read(reinterpret_cast<char *>(&recorder_info.nLowFilters), sizeof(recorder_info.nLowFilters));
     file.read(reinterpret_cast<char *>(&recorder_info.nHighFilters), sizeof(recorder_info.nHighFilters));
 
-    float z;
-    recorder_info.sensitivity = readChannel(z, file, 20);
-    recorder_info.lowFilter = readChannel(z, file, 20);
-    recorder_info.highFilter = readChannel(z, file, 20);
+    recorder_info.sensitivity = readChannel<float>(file, 20);
+    recorder_info.lowFilter = readChannel<float>(file, 20);
+    recorder_info.highFilter = readChannel<float>(file, 20);
 
     // <33s2bhH
     unsigned char b;
@@ -190,35 +191,34 @@ RecorderMontageInfo read_recorder_info(fstream &file, long offset, long size)
 
     // channels
     int nch = 32;
-    short h;
-    unsigned short H;
     char uch[5];
     char st[9];
     char stth[13];
 
-    vector<unsigned short> sampling_rate = readChannel(H, file, nch);
-    vector<string> signal_type = readChannelChar(st, file, nch);
-    vector<string> signal_sub_type = readChannelChar(st, file, nch);
-    vector<string> channel_desc = readChannelChar(stth, file, nch);
-    vector<unsigned short> sensitivity_index = readChannel(H, file, nch);
-    vector<unsigned short> low_filter_index = readChannel(H, file, nch);
-    vector<unsigned short> high_filter_index = readChannel(H, file, nch);
-    vector<unsigned short> delay = readChannel(H, file, nch);
-    vector<string> unit = readChannelChar(uch, file, nch);
-    vector<short> artefact_level = readChannel(h, file, nch);
-    vector<short> cal_type = readChannel(h, file, nch);
-    vector<float> cal_factor = readChannel(z, file, nch);
-    vector<float> cal_offset = readChannel(z, file, nch);
-    vector<unsigned short> save_buffer_size = readChannel(H, file, nch);
+    std::vector<unsigned short> sampling_rate = readChannel<unsigned short>(file, nch);
+    std::vector<std::string> signal_type = readChannelChar(st, file, nch);
+    std::vector<std::string> signal_sub_type = readChannelChar(st, file, nch);
+    std::vector<std::string> channel_desc = readChannelChar(stth, file, nch);
+    std::vector<unsigned short> sensitivity_index = readChannel<unsigned short>(file, nch);
+    std::vector<unsigned short> low_filter_index = readChannel<unsigned short>(file, nch);
+    std::vector<unsigned short> high_filter_index = readChannel<unsigned short>(file, nch);
+    std::vector<unsigned short> delay = readChannel<unsigned short>(file, nch);
+    std::vector<std::string> unit = readChannelChar(uch, file, nch);
+    std::vector<short> artefact_level = readChannel<short>(file, nch);
+    std::vector<short> cal_type = readChannel<short>(file, nch);
+    std::vector<float> cal_factor = readChannel<float>(file, nch);
+    std::vector<float> cal_offset = readChannel<float>(file, nch);
+    std::vector<unsigned short> save_buffer_size = readChannel<unsigned short>(file, nch);
 
 
     for (int i = 0; i < nch; i++)
     {
         Channel channel;
         channel.sampling_rate = sampling_rate[i];
-        channel.signal_type = signal_type[i];
-        channel.signal_sub_type = signal_sub_type[i];
-        channel.channel_desc = channel_desc[i];
+        //std::cout << channel.sampling_rate << std::endl;
+        channel.signal_type = signal_type[i]; // "EEG"
+        channel.signal_sub_type = signal_sub_type[i]; // "---"
+        channel.channel_desc = channel_desc[i]; //"Fp1/G19"
         channel.sensitivity_index = sensitivity_index[i];
         channel.low_filter_index = low_filter_index[i];
         channel.high_filter_index = high_filter_index[i];
@@ -230,88 +230,90 @@ RecorderMontageInfo read_recorder_info(fstream &file, long offset, long size)
         channel.artefact_level = artefact_level[i];
         channel.save_buffer_size = save_buffer_size[i];
         recorder_info.channels.push_back(channel);
+        //qDebug() << "factor: " << channel.cal_factor; //changes signs between 7/2008 and 9/2008 in VEEG files
+        ;
     }
-    cout << "end of read_recorder_info: ";
-    whereAmI(file);
+
+    //std::cout << "end of read_recorder_info: "; whereAmI(file);
+
+    // READ THE DISPLAY MONTAGE HERE
+    file.seekg (2, std::ios::cur); // go forward by two chars
+    char mname[33];
+    char lead[9];
+    file.read(reinterpret_cast<char *>(&mname), sizeof(mname));
+    recorder_info.displayMontage.name = mname;
+
+    // empty block follow = 34 x no_channels (33x 00 + 01), pak blok nul (asi do fixní délky), potom no_channels x 01 (doplněno nulami), potom 00 01 00 02 00 03 00 až no_channels (a zase doplněno nulami)
+
+    file.seekg(5868); // is it fixed? - see above, probably yes
+
+    std::vector<std::string> leads = readChannelChar(lead, file, 24);
+
+    //std::cout << "display montage: " << std::endl;
+    for(unsigned int i = 0; i < leads.size(); i++){
+        //file.read(reinterpret_cast<char *>(&lead), sizeof(lead));
+        //std::cout << leads[i] << std::endl;
+    }
+
+    recorder_info.displayMontage.leads = leads;
+
     return recorder_info;
 }
 
-vector<Event> read_events(fstream &file, long offset, long size, long nevents)
-{
+std::vector<read_signal_file::Event> read_signal_file::read_events(long offset, long size, long nevents){
     file.seekg(offset);
-    cout << "beginning of read_events: "; whereAmI(file);
+    //std::cout << "beginning of read_events: "; whereAmI(file);
     //nevents = 10240;
-    vector<Event> events;
+    std::vector<Event> events;
     short tcount;
     short h;
     unsigned char B;
     unsigned int I;
     file.read(reinterpret_cast<char *>(&tcount), sizeof(tcount));
-    //cout << tcount << " tcount" << endl;
-    long currsize = sizeof(tcount) + sizeof(h) + sizeof(B) + 6 * sizeof(I);
-    //cout << "currsize: " << currsize << endl;
-    if (currsize > size)
-    {
-    }
-    for (int i = 0; i < nevents; i++)
-    {
+    long eventSize = sizeof(h) + sizeof(B) + 6 * sizeof(I); //should be 27
+
+    //qDebug() << "read_events tcount: " << tcount;
+
+    for (int i = 0; i < nevents; i++){
         if (i < tcount)
         {
             Event event;
             //whereAmI(file);
             file.read(reinterpret_cast<char *>(&event.ev_type), sizeof(event.ev_type));
-            //cout << "event: " << event.desc1;
             file.read(reinterpret_cast<char *>(&event.sub_type), sizeof(event.sub_type));
-            //cout << ", " << event.desc2;
             file.read(reinterpret_cast<char *>(&I), sizeof(I));
             event.page = I >> 16;
             event.page_time = (I & 0x0000ffff) / 1000.0;
-            //cout << event.page << ", " << event.page_time << endl;
             file.read(reinterpret_cast<char *>(&event.time), sizeof(event.time));
-            //cout << ", " << event.ev2;
             file.read(reinterpret_cast<char *>(&event.duration), sizeof(event.duration));
-            //cout << ", " << event.ev3;
             file.read(reinterpret_cast<char *>(&event.duration_in_ms), sizeof(event.duration_in_ms));
-            //cout << ", " << event.ev4;
             file.read(reinterpret_cast<char *>(&event.channels), sizeof(event.channels));
-            //cout << ", " << event.ev5;
             file.read(reinterpret_cast<char *>(&event.info), sizeof(event.info));
-            //cout << ", " << event.ev6;
             events.push_back(event);
-            //cout << endl;
         }
     }
     long current = file.tellg();
-    //cout << current << endl;
-    //cout << "nevents-tcount = " << nevents-tcount << endl;
-    file.seekg(current + (nevents - tcount) * 27);
-    //file.seekg(offset + sizeof(tcount) + nevents*27);
+    file.seekg(current + (nevents - tcount) * eventSize); // needed to past the empty bytes reserved for events to reach event_desc
     return events;
 }
 
-vector<EventDesc> read_event_descs(fstream &file)
-{
-    cout << "read_event_descs: "; whereAmI(file);
-    // Careful on this - need to count for empty cycles in previous struct - function read_events
-    //cout << "top of read_event_desc "; whereAmI(file);
-    vector<EventDesc> types;
+std::vector<read_signal_file::EventDesc> read_signal_file::read_event_descs(){
+    std::vector<EventDesc> types;
     short tcount;
-    short h;
+    short h = 0;
     char dss[20];
     char lss[6];
 
     file.read(reinterpret_cast<char *>(&tcount), sizeof(tcount));
 
     int ssize = 32;
-    vector<string> desc = readChannelChar(dss, file, ssize);
-    vector<string> labels = readChannelChar(lss, file, ssize);
-    vector<short> values = readChannel(h, file, ssize);
-    vector<short> dtypes = readChannel(h, file, ssize);
+    std::vector<std::string> desc = readChannelChar(dss, file, ssize);
+    std::vector<std::string> labels = readChannelChar(lss, file, ssize);
+    std::vector<short> values = readChannel<short>(file, ssize);
+    std::vector<short> dtypes = readChannel<short>(file, ssize);
 
-    for (int i = 0; i < tcount; i++)
-    {
+    for (int i = 0; i < tcount; i++){
         EventDesc eventdesc;
-        //cout << desc[i] << " " << labels[i] << " " << values[i] << " " << dtypes[i] << endl;
         eventdesc.desc = desc[i];
         eventdesc.label = labels[i];
         eventdesc.d_type = dtypes[i];
@@ -322,222 +324,337 @@ vector<EventDesc> read_event_descs(fstream &file)
     return types;
 }
 
-vector<Event> get_selected_events_4_types(vector<Event> events, int type)
-{
-    vector<Event> selected;
+void read_signal_file::read_additional_events(QString tableFile){
+    // this function is a stub
 
-    for (int i = 0; i < events.size(); i++)
+    std::fstream tblfile(tableFile.toLocal8Bit(), std::ios::in | std::ios::out | std::ios::binary);
+    short tcount;
+    unsigned int I;
+    long program_id;
+
+    qDebug() << tableFile;
+
+    if (tblfile.fail())
     {
-        if (events[i].ev_type == type)
-        {
-            selected.push_back(events[i]);
+        qDebug() << "ERROR: Cannot open the file...";
+        return;
+    }
+
+    tblfile.read(reinterpret_cast<char *>(&program_id), sizeof(program_id));
+
+    // check if it is BrainLab *.SIG file
+    if (program_id != 1096045395){
+        qDebug() << tableFile << " is not valid BrainLab file, skipping";
+        return;
+    }
+
+    tblfile.seekg(1958);
+    tblfile.read(reinterpret_cast<char *>(&tcount), sizeof(tcount));
+    qDebug() << "tblfile tcount: " << tcount;
+
+    whereAmI(tblfile);
+
+    std::vector<Event> events;
+
+
+    qDebug() << "read_additional_events tcount: " << tcount;
+
+
+    for (int i = 0; i <= tcount; i++){
+        Event event;
+        //whereAmI(file);
+        tblfile.read(reinterpret_cast<char *>(&event.ev_type), sizeof(event.ev_type));
+        tblfile.read(reinterpret_cast<char *>(&event.sub_type), sizeof(event.sub_type));
+        tblfile.read(reinterpret_cast<char *>(&I), sizeof(I));
+        event.page = I >> 16;
+        event.page_time = (I & 0x0000ffff) / 1000.0;
+        tblfile.read(reinterpret_cast<char *>(&event.time), sizeof(event.time));
+        tblfile.read(reinterpret_cast<char *>(&event.duration), sizeof(event.duration));
+        tblfile.read(reinterpret_cast<char *>(&event.duration_in_ms), sizeof(event.duration_in_ms));
+        tblfile.read(reinterpret_cast<char *>(&event.channels), sizeof(event.channels));
+        tblfile.read(reinterpret_cast<char *>(&event.info), sizeof(event.info));
+        events.push_back(event);
+    }
+}
+
+std::vector<read_signal_file::Note> read_signal_file::read_notes(long offset, long size){
+
+    file.seekg(offset);
+    std::vector<Note> notes;
+    unsigned int I;
+    short tcount; // = no of notes, size of one note = 264 bytes, 256 bytes = description, 2x4 bytes (int)
+    file.read(reinterpret_cast<char *>(&tcount), sizeof(tcount));
+    //qDebug() << "tcount" << tcount;
+
+    for (int i = 1; i <= tcount; i++){
+        Note note;
+        file.read(reinterpret_cast<char *>(&note.desc), sizeof(note.desc));
+        file.read(reinterpret_cast<char *>(&I), sizeof(I));
+        note.page = I >> 16;
+        file.read(reinterpret_cast<char *>(&note.time), sizeof(note.time)); // TO DO - how to turn this into time?
+        notes.push_back(note);
+    }
+    return notes;
+}
+
+std::vector<read_signal_file::Montage> read_signal_file::read_display_montages(long offset, long size){
+
+    char lead[9];
+    char ch;
+    std::vector<Montage> montages;
+
+    file.seekg(offset);
+    //std::cout << "display montages start at " << offset<<std::endl;
+    //std::cout << "display montages size: " << size<<std::endl;
+    //std::cout << "beginning read_display_montages: "; whereAmI(file);
+    short tcount;
+    file.read(reinterpret_cast<char *>(&tcount), sizeof(tcount)); // no of montages - 1?
+
+    //std::cout << "tcount: "<<tcount << std::endl;
+
+    for(int t = 0; t < tcount -1;t++){ // 2193 = number of chars between beggining of montages
+        Montage montage;
+        std::string mname = "";
+
+        while ((ch = file.get()) != '\00'){ // should be the end of montages names
+            mname += ch;
+        }
+
+        montage.name = mname;
+        //std::cout << "mname: " << mname << std::endl;
+        file.seekg (1153-mname.length()-1, std::ios::cur); // 1153 = number of chars from beggining of montage to leads
+        std::vector<std::string> leads = readChannelChar(lead, file, 24); // 24 * 9 = 216
+
+        for(int i = 0; i < int(leads.size()); i++){
+            //file.read(reinterpret_cast<char *>(&lead), sizeof(lead));
+            if(!leads[i].empty()){
+                //std::cout << i << " " << leads[i] << std::endl;
+                montage.leads.push_back(leads[i]);
+            }
+        }
+        montages.push_back(montage);
+        file.seekg (824, std::ios::cur); // = 2193 - 1153 - 216
+    }
+    return montages;
+}
+
+read_signal_file::Spages read_signal_file::read_signal_pages(bool read_signal_data, long file_size, long offset, int page_size, int channels_used, const std::vector<Channel>& channels){
+    //std::cout << "Begining of read_signal_pages: "; whereAmI(file);
+
+    short h = 0;
+    int num_pages = int((file_size - offset) / page_size);
+    //std::cout << "Channels used: " << channels_used << std::endl;
+    //std::cout << "save_buffer_size " << channels[1].save_buffer_size << std::endl;
+    //std::cout << "num pages: " << num_pages << std::endl;
+    //std::cout << "page_size: " << page_size << std::endl;
+    std::vector<std::vector<double>> esignals(channels_used, std::vector<double>()); //originally "signals"
+
+    if (read_signal_data){ // reserve vector space only when you need read the data
+        // reserving done right
+        for(int ch = 0; ch < channels_used; ch++){
+            esignals[ch].reserve(channels[ch].save_buffer_size * (num_pages+1)); // allocate memory for one page more
+            //std::cout << "esignals[ch].capacity(): " << esignals[ch].capacity() << std::endl;
         }
     }
-    return selected;
-}
 
-void read_display_montages(fstream &file, long offset, long size){
-    file.seekg(offset);
-    cout << "display montages start at " << offset<<endl;
-    cout << "display montages size: " << size<<endl << endl;
-
-    cout << "beginning read_display_montages: "; whereAmI(file);
-    //nevents = 10240;
-    short tcount;
-    file.read(reinterpret_cast<char *>(&tcount), sizeof(tcount)); // some kind of buffer?
-
-    //cout << "tcount: "<<tcount << endl;
-    whereAmI(file);
-
-    char montageName[33];
-    char lead[9];
-
-    file.read(reinterpret_cast<char *>(&montageName), sizeof(montageName));
-
-    //cout << "montage name: " << montageName << endl;
-
-    file.seekg(1120,ios_base::cur);
-    vector<string> leads = readChannelChar(lead, file, 24);
-
-    for(int i = 0; i < leads.size(); i++){
-        //file.read(reinterpret_cast<char *>(&lead), sizeof(lead));
-        //cout << leads[i] << endl;
-    }
-    cout << endl;
-
-}
-
-
-Spages read_signal_pages(fstream &file, bool read_signal_data, long file_size, long offset, int page_size, int epoch_length, int channels_used, vector<Channel> channels)
-{
-    //cout << "Begining of read_signal_pages: "; whereAmI(file);
-    //cout << "Channels used: " << channels_used << endl;
-
-    int header_length = 6;
-    short h;
-    int num_pages = int((file_size - offset) / page_size);
-    //vector<int> signal;
-    //vector<vector<int>> signals;
-    cout << "save_buffer_size " << channels[1].save_buffer_size << endl;
-    vector<vector<double>> signals(channels_used, vector<double>(channels[1].save_buffer_size * num_pages, 0));
-    //signals = [numpy.zeros(channels[i].save_buffer_size*num_pages) if read_signal_data else [] for i in range(channels_used)]
-    vector<SignalPage> pages;
-    cout << "num pages: " << num_pages << endl;
-    ;
-    //pages=[None]*num_pages
-
-    header_length = 6;
-
+    std::vector<SignalPage> pages;
     int current_offset = offset;
     bool stop = false;
     file.seekg(current_offset);
 
-    cout << "Begining of signal reading read_signal_pages: "; whereAmI(file);
+    //std::cout << "Begining of signal reading read_signal_pages: "; whereAmI(file);
 
     int curr_page = -1;
 
-    while (!stop && !file.eof())
-    {
+    while (!stop && !file.eof()){
         curr_page += 1;
-        //cout << "Current page: " << curr_page << endl;
+        //std::cout << "Current page: " << curr_page << std::endl;
         SignalPage page;
         file.read(reinterpret_cast<char *>(&page.filling), sizeof(page.filling));
         file.read(reinterpret_cast<char *>(&page.time), sizeof(page.time));
-        pages.push_back(page); // or should I use insert?
-        //cout << "page filling: " << page.filling << " page time: " << page.time << endl;
-
+        pages.push_back(page);
+        //std::cout << "page filling: " << page.filling << " page time: " << page.time << std::endl;
+        //whereAmI(file);
         //std::cout << "page time: " << page.time << endl;
-        //decode_time(page.time);
 
-        if (page.filling != 0)
-        {
+        if (page.filling != 0){ // if 0 = page filled?
             stop = true;
-            cout << "Stop is true!" << endl;
+            std::cout << "Stop is true!" << std::endl;
         }
-        else
-        {
-            int data_size = page_size - header_length; // what is this for?
-        }
-        if (!stop)
-        {
+        if (!stop){
             current_offset += page_size;
             //cout << "Current offset: " << current_offset <<endl;
-            if (read_signal_data)
-            {
-                for (int i = 0; i < channels_used; i++)
-                {
-                    //cout << "Channel buffer size in channel no "<< i+1 << " is " << channels[i].save_buffer_size << endl;
-                    vector<short> b = readChannel(h, file, channels[i].save_buffer_size);
+            if (read_signal_data){
+                for (int i = 0; i < channels_used; i++){
+                    //std::cout << "Channel buffer size in channel no "<< i+1 << " is " << channels[i].save_buffer_size << std::endl;
+                    std::vector<short> b = readChannel<short>(file, channels[i].save_buffer_size);
                     int start_index = curr_page * channels[i].save_buffer_size;
-                    signals[i].insert(signals[i].begin() + start_index, b.begin(), b.end());
+                    esignals[i].insert(esignals[i].begin() + start_index, b.begin(), b.end());
                 }
+                //std::cout << "esignals[0].size(): " << esignals[0].size() << std::endl;
             }
-            else
-            {
+            else{
                 file.seekg(current_offset);
+                if (int(file.tellg()) == -1){ // beware of  eofbit (End-of-File bit), seekg resets it
+                    stop = true;
+                }
             }
         }
     }
 
-    if (read_signal_data)
-    {
-        for (int i = 0; i < channels_used; i++)
-        {
-            double cal_factor = channels[i].cal_factor;
+
+    if (read_signal_data){
+        for (int i = 0; i < channels_used; i++){
+            double cal_factor = -abs(channels[i].cal_factor); // in most of the records the cal_factor is negative and the polarity is inverted in edfbrowser - so I use absolute value
+            // and I use -1* because otherwise the resulting file would have positive polarity upwards (which is actually oky for edfbrowser, but not for other browsers)
             double cal_offset = channels[i].cal_offset;
-            std::transform(signals[i].begin(), signals[i].end(), signals[i].begin(), [&cal_factor](double &c) { return c * cal_factor; });
-            std::transform(signals[i].begin(), signals[i].end(), signals[i].begin(), [&cal_offset](double &c) { return c + cal_offset; });
+            // transform(v.begin(), v.end(), v.begin(), [k](int &c){ return c*k; });
+            std::transform(esignals[i].begin(), esignals[i].end(), esignals[i].begin(), [cal_factor](double c) { return c * cal_factor; });
+            std::transform(esignals[i].begin(), esignals[i].end(), esignals[i].begin(), [cal_offset](double c) { return c + cal_offset; });
         }
     }
     Spages spages;
     spages.pages = pages;
-    spages.esignals = signals;
+    spages.esignals = esignals;
     return spages;
 }
 
-SignalFile read_signal_file(string file_name, bool read_signal_data){
+read_signal_file::Spage read_signal_file::read_signal_page(long offset, int channels_used, const std::vector<Channel>& channels){
+    std::vector<std::vector<double>> esignals(channels_used, std::vector<double>()); //originally "signals"
 
-    // GET THE FILE SIZE
-    ifstream myfile(file_name, ios::binary);
-    const auto begin = myfile.tellg();
-    myfile.seekg(0, ios::end);
-    const auto end = myfile.tellg();
-    const auto file_size = (end - begin);
-    cout << "File size: " << file_size << " bytes" << endl;
-
-    // READ THE FILE
-    streampos fileSize;
-    fstream file(file_name, ios::in | ios::out | ios::binary);
-
-    if (file.fail())
-    {
-        cout << "ERROR: Cannot open the file..." << endl;
-        exit(0);
+    for(int ch = 0; ch < channels_used; ch++){
+        esignals[ch].reserve(channels[ch].save_buffer_size * 1); // allocate memory for one page
     }
+
+    file.clear();
+    file.seekg(offset);
+    SignalPage page;
+    file.read(reinterpret_cast<char *>(&page.filling), sizeof(page.filling));
+    file.read(reinterpret_cast<char *>(&page.time), sizeof(page.time));
+
+    //std::cout << "page filling: " << page.filling << " page time: " << page.time << std::endl;
+    //whereAmI(file);
+
+
+    for (int i = 0; i < channels_used; i++){
+        std::vector<short> b = readChannel<short>(file, channels[i].save_buffer_size);
+        esignals[i].insert(esignals[i].begin(), b.begin(), b.end());
+    }
+
+    for (int i = 0; i < channels_used; i++){
+        double cal_factor = -abs(channels[i].cal_factor); // in most of the records the cal_factor is negative and the polarity is inverted in edfbrowser - so I use absolute value
+        // and I use -1* because otherwise the resulting file would have positive polarity upwards (which is actually oky for edfbrowser, but not for other browsers)
+        double cal_offset = channels[i].cal_offset;
+        // transform(v.begin(), v.end(), v.begin(), [k](int &c){ return c*k; });
+        std::transform(esignals[i].begin(), esignals[i].end(), esignals[i].begin(), [&cal_factor](double &c) { return c * cal_factor; });
+        std::transform(esignals[i].begin(), esignals[i].end(), esignals[i].begin(), [&cal_offset](double &c) { return c + cal_offset; });
+    }
+
+    Spage spage;
+    spage.page = page;
+    spage.esignals = esignals;
+    return spage;
+}
+
+void read_signal_file::read_signal_page_into(long offset, int channels_used, const std::vector<Channel>& channels, std::vector<std::vector<double>>& esignals_buffer){
+
+    file.clear(); // resets the pointer
+    file.seekg(offset); // set it to given position
+
+    SignalPage page;
+    file.read(reinterpret_cast<char *>(&page.filling), sizeof(page.filling));
+    file.read(reinterpret_cast<char *>(&page.time), sizeof(page.time));
+    // improved by Gemini
+    // A reusable buffer for the raw short data (avoids re-allocating inside the loop)
+    static std::vector<short> raw_short_buffer;
+
+    for (int i = 0; i < channels_used; i++) {
+        int buf_size = channels[i].save_buffer_size;
+
+        // 1. Resize buffers if needed (only allocates on the very first page)
+        if (raw_short_buffer.size() < buf_size) raw_short_buffer.resize(buf_size);
+        if (esignals_buffer[i].size() < buf_size) esignals_buffer[i].resize(buf_size);
+
+        // 2. Read the block of shorts directly from the file
+        file.read(reinterpret_cast<char *>(raw_short_buffer.data()), buf_size * sizeof(short));
+
+        // 3. Get calibration variables
+        double cal_factor = -abs(channels[i].cal_factor);
+        double cal_offset = channels[i].cal_offset;
+
+        // 4. THE MAGIC: Convert to double and calibrate in one single, hyper-fast loop
+        for (int j = 0; j < buf_size; j++) {
+            esignals_buffer[i][j] = (raw_short_buffer[j] * cal_factor) + cal_offset;
+        }
+    }
+}
+
+read_signal_file::SignalFile read_signal_file::read_signal_file_all(QFileInfo fileInfo, bool read_signal_data){
+
+    // get file size
+    const long long file_size = fileInfo.size();
+    const long BRAINLAB_PROGRAM_ID = 1096045395;
 
     // Signal struct
     SignalFile signal;
 
+    // READ THE FILE
+    file.open(fileInfo.filePath().toLocal8Bit(), std::ios::in | std::ios::out | std::ios::binary);
+    //std::fstream file(fileInfo.filePath().toLocal8Bit(), std::ios::in | std::ios::out | std::ios::binary);
+
+    qDebug() << fileInfo.filePath();
+
+    if (file.fail())
+    {
+        qDebug() << "ERROR: Cannot open the file...";
+        return signal;
+    }
+
     // Signal header
-    signal.header = read_signal_header(file);
+    signal.header = read_signal_header();
+
+    // check if it is BrainLab *.SIG file
+    if (signal.header.program_id != BRAINLAB_PROGRAM_ID){
+        qDebug() << fileInfo.filePath() << " is not valid BrainLab file, skipping";
+        return signal;
+    }
 
     // Data table
-    signal.data_table = read_data_table(file);
+    signal.data_table = read_data_table();
 
-    whereAmI(file); // should be 80
+    //whereAmI(file); // should be 80
     // Measurement
-    signal.measurement = read_measurement(file, signal.data_table.measurement_info.offset, signal.data_table.measurement_info.size);
+    signal.measurement = readMeasurement(signal.data_table.measurement_info.offset);
 
     //Recorder info
-    signal.recorder_info = read_recorder_info(file, signal.data_table.recorder_montage_info.offset, signal.data_table.recorder_montage_info.size);
+    signal.recorder_info = read_recorder_info(signal.data_table.recorder_montage_info.offset);
 
     //Events
-    //cout << "Moving to: " << data_table.events_info.offset << endl;
-    //cout << "Block size: " << data_table.events_info.size << endl;
-    signal.events = read_events(file, signal.data_table.events_info.offset, signal.data_table.events_info.size, 2048);
+    signal.events = read_events(signal.data_table.events_info.offset, signal.data_table.events_info.size, 2048);
+
 
     //Event desc
     // get to 61776 by reading additional 27 bytes for every missing event (maximum is 2048) in read_events
-    signal.events_desc = read_event_descs(file);
+    signal.events_desc = read_event_descs();
 
-    whereAmI(file);
+    //whereAmI(file);
+    signal.notes = read_notes(signal.data_table.notes_info.offset, signal.data_table.notes_info.size);
 
-    std::map<int, std::string> EventDict;
+    // read additional montages
+    signal.montages = read_display_montages(signal.data_table.display_montages_info.offset, signal.data_table.display_montages_info.size);
 
-    EventDict[1] = "ET_SAVESKIPEVENT";
-    EventDict[2] = "ET_SYSTEMEVENT";
-    EventDict[3] = "ET_USEREVENT";
-    EventDict[4] = "ET_DIGINPEVENT";
-    EventDict[5] = "ET_RECORDEREVENT";
-    EventDict[6] = "ET_RESPIRATIONEVENTS";
-    EventDict[7] = "ET_SATURATIONEVENTS";
-    EventDict[8] = "ET_ECGEVENTS";
-    EventDict[9] = "ET_EMGEVENTS";
-    EventDict[10] = "ET_EEG_DELTAEVENTS";
-    EventDict[11] = "ET_EEG_SPINDLEEVENTS";
-    EventDict[12] = "ET_EEG_ALPHAEVENTS";
-    EventDict[13] = "ET_EOGEVENTS";
-    EventDict[14] = "ET_EEG_THETAEVENTS";
-    EventDict[15] = "ET_EEG_BETAEVENTS";
-    EventDict[16] = "ET_AROUSALEVENTS";
-    EventDict[17] = "ET_SOUNDEVENTS";
-    EventDict[18] = "ET_BODYPOSITIONEVENTS";
-    EventDict[19] = "ET_CPAPEVENTS";
+    //QString tableFile = fileInfo.canonicalPath() + "/" + fileInfo.baseName() + ".TBL";
+    //read_additional_events(tableFile); // TO DO - read additional events in tbl file
 
-    vector<Event> store_events_list = get_selected_events_4_types(signal.events, 1);
-
-    signal.store_events = store_events_list.size();
-    cout << "number of channels used: "<< signal.recorder_info.numberOfChannelsUsed << endl;
-
-    // TO DO - read additional montages at position signal.data_table.display_montages_info.offset;
-    read_display_montages(file, signal.data_table.display_montages_info.offset, signal.data_table.display_montages_info.size);
-
-    //spages
-    // TO DO - construct time vector from signal_pages
-    Spages spages = read_signal_pages(file, true, file_size, signal.data_table.signal_info.offset, signal.data_table.signal_info.size, 30, signal.recorder_info.numberOfChannelsUsed, signal.recorder_info.channels);
+    Spages spages = read_signal_pages(read_signal_data, file_size, signal.data_table.signal_info.offset, signal.data_table.signal_info.size, signal.recorder_info.numberOfChannelsUsed, signal.recorder_info.channels);
     signal.signal_pages = spages.pages;
     signal.signal_data = spages.esignals;
 
-    file.close();
+    if (read_signal_data){ // prevent the file from closing when writing chunks
+        file.close();
+    }
+
+
+    signal.check = true;
     return signal;
 }

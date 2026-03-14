@@ -37,10 +37,10 @@ public:
     // Structs
 
     //void paintEvent(QPaintEvent *event);
-    struct SignalFile signal;
-    struct SignalFile SF;
-    struct Measurement HDR;
-    struct SignalFile *pSF;
+    struct read_signal_file::SignalFile signal;
+    struct read_signal_file::SignalFile SF;
+    struct read_signal_file::Measurement HDR;
+    struct read_signal_file::SignalFile *pSF;
 
     // Variables
 
@@ -50,7 +50,7 @@ public:
     long long pagetime = 10; // number of seconds to show on the screen
     long long viewtime = 0; //start of left edge of viewed page in seconds
     int mouseWheel = 0; //1 = step, 0 = page
-    string path2file;
+    std::string path2file;
 
 
     int foo;
@@ -66,28 +66,20 @@ public:
         return foo;
     }
 
-    void test_patinfo(Measurement *measurement);
-    void open_file(string path2file);
+    void test_patinfo(read_signal_file::Measurement *measurement);
+    void open_file(std::string path2file);
     void setup_viewbuf();
     void dragEnterEvent(QDragEnterEvent *event);
     void dropEvent(QDropEvent* event);
     void createToolbars();
 
 
-    void setHDR(Measurement measurement){
+    void setHDR(read_signal_file::Measurement measurement){
         HDR = measurement;
     }
 
-    Measurement getHDR(){
+    read_signal_file::Measurement getHDR(){
         return HDR;
-    }
-
-    void setSignal(SignalFile signal){
-        SF = signal;
-    }
-
-    SignalFile getSignal(){
-        return SF;
     }
 
 private:

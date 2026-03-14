@@ -36,7 +36,7 @@ set(PROJECT_SOURCES
     read_signal_file.cpp
     show_hdr.cpp
     viewcurve.cpp
-    third_party/fidlib/fidlib.c
+    #third_party/fidlib/fidlib.c
     resources.qrc
     )
 

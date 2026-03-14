@@ -110,7 +110,7 @@ void ViewCurve::paintEvent(QPaintEvent *event)
 
     // viewbuf
     // TO DO - move it to separate class for resampling, filtering, montages etc
-    vector<vector<double>> viewbuf;
+    std::vector<std::vector<double>> viewbuf;
 
 
     if (mainwindow->notch){
@@ -124,18 +124,18 @@ void ViewCurve::paintEvent(QPaintEvent *event)
 
         // ====== FILTERING ======
         //FidFilter *ff;
-        free(fbuf1);
-        fid_run_free(run);
-        free(ff);
+        //free(fbuf1);
+        //fid_run_free(run);
+        //free(ff);
 
         filter_spec = spec_str_1;
         spec_str_1[0] = 0;
 
-        snprintf(spec_str_1, 256, "BsRe/%i/%f", order, frequency);
+        _snprintf(spec_str_1, 256, "BsRe/%i/%f", order, frequency);
         qDebug() << spec_str_1;
         //err= fid_parse(double rate, char **pp, FidFilter **ffp);
         //err = fid_parse(rate, &filter_spec, &ff);
-            err = fid_parse(fs,&filter_spec, &ff);
+            //err = fid_parse(fs,&filter_spec, &ff);
 
         if(err != NULL)
           {
@@ -148,23 +148,40 @@ void ViewCurve::paintEvent(QPaintEvent *event)
             qDebug() << "Filter created!";
         }
 
-        run= fid_run_new(ff, &funcp);
-        fbuf1= fid_run_newbuf(run);
+        //run= fid_run_new(ff, &funcp);
+        //fbuf1= fid_run_newbuf(run);
     }
 
     // ====== LOAD DATA TO VIEWBUF ======
+    if (mainwindow->signal.signal_data.empty()) return;
+
     for (int i = 0; i < mainwindow->signal.recorder_info.numberOfChannelsUsed;i++){
+        if (i >= (int)mainwindow->signal.signal_data.size()) break;
+
         int timeWindow = mainwindow->signal.recorder_info.channels[i].sampling_rate*second2draw;
         long long windowStart = mainwindow->viewtime*mainwindow->signal.recorder_info.channels[i].sampling_rate;
 
-        vector<double> temp_channel(mainwindow->signal.signal_data[i].begin()+windowStart, mainwindow->signal.signal_data[i].begin() + windowStart + timeWindow);
+        if (windowStart < 0) windowStart = 0;
+        if (windowStart >= (long long)mainwindow->signal.signal_data[i].size()) {
+            viewbuf.push_back(std::vector<double>());
+            continue;
+        }
+
+        if (windowStart + timeWindow > (long long)mainwindow->signal.signal_data[i].size()) {
+            timeWindow = (long long)mainwindow->signal.signal_data[i].size() - windowStart;
+        }
+
+        std::vector<double> temp_channel;
+        if (timeWindow > 0) {
+            temp_channel.assign(mainwindow->signal.signal_data[i].begin()+windowStart, mainwindow->signal.signal_data[i].begin() + windowStart + timeWindow);
+        }
 
         // filtering
         if (mainwindow->notch){
-        for (int j = 0; j < temp_channel.size(); j++){
-            temp_channel[j]= funcp(fbuf1, temp_channel[j]);
-        }
-        fid_run_zapbuf(fbuf1);
+//        for (int j = 0; j < temp_channel.size(); j++){
+//            temp_channel[j]= funcp(fbuf1, temp_channel[j]);
+//        }
+//        fid_run_zapbuf(fbuf1);
         }
 
         viewbuf.push_back(temp_channel);
@@ -190,7 +207,7 @@ void ViewCurve::paintEvent(QPaintEvent *event)
 
 
     // ====== DRAW SIGNALS =======
-    for (int i = 0; i < mainwindow->signal.recorder_info.numberOfChannelsUsed;i++){
+    for (int i = 0; i < (int)viewbuf.size(); i++){
         painter.setPen(grid_pen);
         painter.drawLine(LeftMargin,fromTop + offset*i,1000+LeftMargin,fromTop + offset*i);
         painter.setPen(signal_pen);
@@ -199,17 +216,12 @@ void ViewCurve::paintEvent(QPaintEvent *event)
         painter.drawText(1, fromTop+offset*i, qstr);
         int fromX = LeftMargin;
         int fromY = fromTop + offset*i;
-        //int timeWindow = mainwindow->signal.recorder_info.channels[i].sampling_rate*second2draw;
-        long long windowStart = mainwindow->viewtime*mainwindow->signal.recorder_info.channels[i].sampling_rate;
-        if(i == 0) qDebug() << "window start: " << windowStart << "samples";
-
-//        for (int j = 0; j < timeWindow; j++){
-//            painter.drawLine(fromX+j, fromY-mainwindow->signal.signal_data[i][j+windowStart]*scaleY, fromX+j+1, fromY-mainwindow->signal.signal_data[i][j+1+windowStart]*scaleY);
-//        }
 
         // draw signals from viewbuf
-        for (int j = 0; j < viewbuf[i].size(); j++){
-            painter.drawLine(fromX+j, fromY-viewbuf[i][j]*scaleY, fromX+j+1, fromY-viewbuf[i][j+1]*scaleY);
+        if (viewbuf[i].size() > 1) {
+            for (int j = 0; j < (int)viewbuf[i].size() - 1; j++){
+                painter.drawLine(fromX+j, fromY-viewbuf[i][j]*scaleY, fromX+j+1, fromY-viewbuf[i][j+1]*scaleY);
+            }
         }
     }
 
