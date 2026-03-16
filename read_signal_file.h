@@ -202,6 +202,7 @@ public:
         std::vector<EventDesc> events_desc;
         std::vector<Note> notes;
         int store_events;
+        int total_pages;
         std::vector<std::vector<double>> signal_data; //actual EEG data
         std::vector<SignalPage> signal_pages;
         std::vector<Montage> montages; //additional montages
@@ -221,7 +222,11 @@ public:
     std::vector<Montage> read_display_montages(long offset, long size);
     Spages read_signal_pages(bool read_signal_data, long file_size, long offset, int page_size, int channels_used, const std::vector<Channel>& channels);
     Spage read_signal_page(long offset, int channels_used, const std::vector<Channel>& channels);
-    void read_signal_page_into(long offset, int channels_used, const std::vector<Channel> &channels, std::vector<std::vector<double> > &esignals_buffer);
+    //void read_signal_page_into(long offset, int channels_used, const std::vector<Channel> &channels, std::vector<std::vector<double> > &esignals_buffer); // original header from Cuculus
+    // page_offset (where to read in the file), sample_start_index (where to write in the RAM cache).
+    void read_signal_page_into_cache(long page_offset, int channels_used, const std::vector<Channel>& channels, int sample_start_index, std::vector<std::vector<double>>& cache_buffer);
+
+
 };
 
 

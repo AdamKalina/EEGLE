@@ -36,6 +36,7 @@ set(PROJECT_SOURCES
     read_signal_file.cpp
     show_hdr.cpp
     viewcurve.cpp
+    eeg_data_manager.cpp
     #third_party/fidlib/fidlib.c
     resources.qrc
     )

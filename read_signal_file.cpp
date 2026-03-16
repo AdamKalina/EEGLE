@@ -556,15 +556,17 @@ read_signal_file::Spage read_signal_file::read_signal_page(long offset, int chan
     return spage;
 }
 
-void read_signal_file::read_signal_page_into(long offset, int channels_used, const std::vector<Channel>& channels, std::vector<std::vector<double>>& esignals_buffer){
+void read_signal_file::read_signal_page_into_cache(long offset, int channels_used, const std::vector<Channel>& channels, int sample_start_index, std::vector<std::vector<double>>& cache_buffer){
 
-    file.clear(); // resets the pointer
+    // Jump to the exact location of the page in the file
+    file.clear(); // resets the pointer - always clear the stream state before seeking, just in case of prior EOF
     file.seekg(offset); // set it to given position
 
+    // Read the page header
     SignalPage page;
     file.read(reinterpret_cast<char *>(&page.filling), sizeof(page.filling));
     file.read(reinterpret_cast<char *>(&page.time), sizeof(page.time));
-    // improved by Gemini
+
     // A reusable buffer for the raw short data (avoids re-allocating inside the loop)
     static std::vector<short> raw_short_buffer;
 
@@ -573,7 +575,7 @@ void read_signal_file::read_signal_page_into(long offset, int channels_used, con
 
         // 1. Resize buffers if needed (only allocates on the very first page)
         if (raw_short_buffer.size() < buf_size) raw_short_buffer.resize(buf_size);
-        if (esignals_buffer[i].size() < buf_size) esignals_buffer[i].resize(buf_size);
+        //if (esignals_buffer[i].size() < buf_size) esignals_buffer[i].resize(buf_size);
 
         // 2. Read the block of shorts directly from the file
         file.read(reinterpret_cast<char *>(raw_short_buffer.data()), buf_size * sizeof(short));
@@ -584,7 +586,7 @@ void read_signal_file::read_signal_page_into(long offset, int channels_used, con
 
         // 4. THE MAGIC: Convert to double and calibrate in one single, hyper-fast loop
         for (int j = 0; j < buf_size; j++) {
-            esignals_buffer[i][j] = (raw_short_buffer[j] * cal_factor) + cal_offset;
+            cache_buffer[i][sample_start_index + j] = (raw_short_buffer[j] * cal_factor) + cal_offset;
         }
     }
 }
@@ -645,6 +647,8 @@ read_signal_file::SignalFile read_signal_file::read_signal_file_all(QFileInfo fi
 
     //QString tableFile = fileInfo.canonicalPath() + "/" + fileInfo.baseName() + ".TBL";
     //read_additional_events(tableFile); // TO DO - read additional events in tbl file
+
+    signal.total_pages = int((file_size - signal.data_table.signal_info.offset) / signal.data_table.signal_info.size);
 
     Spages spages = read_signal_pages(read_signal_data, file_size, signal.data_table.signal_info.offset, signal.data_table.signal_info.size, signal.recorder_info.numberOfChannelsUsed, signal.recorder_info.channels);
     signal.signal_pages = spages.pages;
