@@ -21,6 +21,7 @@
 #include "read_signal_file.h"
 #include "show_hdr.h"
 #include "viewcurve.h"
+#include "eeg_data_manager.h"
 //#include "third_party\fidlib-0.9.10\fidlib.h"
 
 class ViewCurve;
@@ -37,50 +38,28 @@ public:
     // Structs
 
     //void paintEvent(QPaintEvent *event);
-    struct read_signal_file::SignalFile signal;
-    struct read_signal_file::SignalFile SF;
-    struct read_signal_file::Measurement HDR;
-    struct read_signal_file::SignalFile *pSF;
+    read_signal_file::SignalFile signal;
+    EegDataManager* m_dataManager = nullptr;
 
     // Variables
-
     //defaults - TO DO - class that stores default options?
     int testing = 0;
     int file_open = 0;
-    long long pagetime = 10; // number of seconds to show on the screen
+    long long pagetime = 10; // default number of seconds to show on the screen
     long long viewtime = 0; //start of left edge of viewed page in seconds
-    int mouseWheel = 0; //1 = step, 0 = page
+    int mouseWheelMode = 0; //1 = step, 0 = page
     std::string path2file;
 
-
-    int foo;
     long long lengthOfFile;
     int notch = 0; // notch filter on/off
 
     // Methods
-
-    void setFoo(int i){
-        foo=i;
-    }
-    int getFoo(){
-        return foo;
-    }
-
     void test_patinfo(read_signal_file::Measurement *measurement);
     void open_file(std::string path2file);
     void setup_viewbuf();
     void dragEnterEvent(QDragEnterEvent *event);
     void dropEvent(QDropEvent* event);
     void createToolbars();
-
-
-    void setHDR(read_signal_file::Measurement measurement){
-        HDR = measurement;
-    }
-
-    read_signal_file::Measurement getHDR(){
-        return HDR;
-    }
 
 private:
     QMenuBar     *menubar;

@@ -1,8 +1,7 @@
 #include "viewcurve.h"
 
 
-ViewCurve::ViewCurve(QWidget *w_parent) : QWidget(w_parent)
-{
+ViewCurve::ViewCurve(QWidget *w_parent) : QWidget(w_parent){
 
     //setAttribute(Qt::WA_OpaquePaintEvent); // to bych pak musel nastavovat barvy
 
@@ -32,6 +31,17 @@ ViewCurve::ViewCurve(QWidget *w_parent) : QWidget(w_parent)
     //qDebug() << "window width: " << mainwindow->size().width();
 
     //qDebug() <<"Foo ve viewcurve: " << mainwindow->foo;
+}
+
+void ViewCurve::setDataManager(EegDataManager* manager, const std::vector<read_signal_file::Channel>& channels) {
+    m_dataManager = manager;
+    m_channels = channels;
+}
+
+void ViewCurve::setTimeWindow(double startTimeSec, double durationSec) {
+    m_startTime = startTimeSec;
+    m_duration = durationSec;
+    this->update(); // Force a redraw whenever the time changes
 }
 
 
@@ -91,14 +101,16 @@ void ViewCurve::arrowkeys_shortcuts_global_set_enabled(bool enabled)
 }
 
 //
-void ViewCurve::paintEvent(QPaintEvent *event)
-{
+void ViewCurve::paintEvent(QPaintEvent *event){
+
+    if (!m_dataManager) return; // No file loaded
+
     //create a QPainter and pass a pointer to the device.
     //A paint device can be a QWidget, a QPixmap or a QImage
     QPainter painter(this);
 
 
-    // couple of variable to use when drawing
+    // couple of variables to use when drawing
     int fromTop = 50;
     int offset = 30;
     int second2draw = mainwindow->pagetime;
@@ -109,52 +121,10 @@ void ViewCurve::paintEvent(QPaintEvent *event)
     int scaleY = 50;
 
     // viewbuf
-    // TO DO - move it to separate class for resampling, filtering, montages etc
     std::vector<std::vector<double>> viewbuf;
 
 
-    if (mainwindow->notch){
-        double fs = 250;
-        int order = 1;
-        float frequency = 50;
-        char *filter_spec;
-        char spec_str_1[256];
-        char *err;
-
-
-        // ====== FILTERING ======
-        //FidFilter *ff;
-        //free(fbuf1);
-        //fid_run_free(run);
-        //free(ff);
-
-        filter_spec = spec_str_1;
-        spec_str_1[0] = 0;
-
-        _snprintf(spec_str_1, 256, "BsRe/%i/%f", order, frequency);
-        qDebug() << spec_str_1;
-        //err= fid_parse(double rate, char **pp, FidFilter **ffp);
-        //err = fid_parse(rate, &filter_spec, &ff);
-            //err = fid_parse(fs,&filter_spec, &ff);
-
-        if(err != NULL)
-          {
-            QMessageBox messagewindow(QMessageBox::Critical, "Error", err);
-            messagewindow.exec();
-            free(err);
-            return;
-          }
-        else{
-            qDebug() << "Filter created!";
-        }
-
-        //run= fid_run_new(ff, &funcp);
-        //fbuf1= fid_run_newbuf(run);
-    }
-
     // ====== LOAD DATA TO VIEWBUF ======
-    if (mainwindow->signal.signal_data.empty()) return;
-
     for (int i = 0; i < mainwindow->signal.recorder_info.numberOfChannelsUsed;i++){
         if (i >= (int)mainwindow->signal.signal_data.size()) break;
 
@@ -174,14 +144,6 @@ void ViewCurve::paintEvent(QPaintEvent *event)
         std::vector<double> temp_channel;
         if (timeWindow > 0) {
             temp_channel.assign(mainwindow->signal.signal_data[i].begin()+windowStart, mainwindow->signal.signal_data[i].begin() + windowStart + timeWindow);
-        }
-
-        // filtering
-        if (mainwindow->notch){
-//        for (int j = 0; j < temp_channel.size(); j++){
-//            temp_channel[j]= funcp(fbuf1, temp_channel[j]);
-//        }
-//        fid_run_zapbuf(fbuf1);
         }
 
         viewbuf.push_back(temp_channel);
@@ -236,12 +198,12 @@ void ViewCurve::wheelEvent(QWheelEvent *wheel_event)
     if(mainwindow->file_open == 0)  return;
     //qDebug() << wheel_event->angleDelta().y();
     if(wheel_event->angleDelta().y() > 0){
-        if (mainwindow->mouseWheel == 1)  mainwindow->shift_page_left();
-        if (mainwindow->mouseWheel == 0)  mainwindow->previous_page();
+        if (mainwindow->mouseWheelMode == 1)  mainwindow->shift_page_left();
+        if (mainwindow->mouseWheelMode == 0)  mainwindow->previous_page();
     }
     if(wheel_event->angleDelta().y() < 0){
-        if (mainwindow->mouseWheel == 1)  mainwindow->shift_page_right();
-        if (mainwindow->mouseWheel == 0)  mainwindow->next_page();
+        if (mainwindow->mouseWheelMode == 1)  mainwindow->shift_page_right();
+        if (mainwindow->mouseWheelMode == 0)  mainwindow->next_page();
     }
 
 }

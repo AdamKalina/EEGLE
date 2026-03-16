@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <cstring>
+#include "eeg_data_manager.h"
 
 
 class MainWindow;
@@ -22,17 +23,12 @@ class ViewCurve : public QWidget
 public:
     ViewCurve(QWidget *parent=0);
     ~ViewCurve();
+    void setDataManager(EegDataManager* manager, const std::vector<read_signal_file::Channel>& channels);
+    void setTimeWindow(double startTimeSec, double durationSec);
 
     //void drawCurve_stage_1(QPainter *painter=NULL);
     MainWindow *mainwindow;
 
-    //SignalFile SF;
-
-    //fidlib
-    FidFilter *ff;
-    FidRun *run;
-    FidFunc *funcp;
-    void *fbuf1, *fbuf2;
 
     QShortcut *shift_page_left_shortcut,
     *shift_page_right_shortcut,
@@ -52,6 +48,11 @@ protected:
 
 
 private:
+    EegDataManager* m_dataManager = nullptr;
+    std::vector<read_signal_file::Channel> m_channels; // Store channel info for names/scales
+
+    double m_startTime = 0.0;
+    double m_duration = 10.0; // Show 10 seconds by default
     QPen *signal_pen,
     *grid_pen;
     int fromTop, offset, second2draw, LeftMargin, scaleY;

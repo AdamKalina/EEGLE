@@ -261,40 +261,54 @@ void MainWindow::dropEvent(QDropEvent* e)
 }
 
 void MainWindow::open_file(std::string path2file){
-    QElapsedTimer timer;
-    timer.start();
 
     QFileInfo infoSig(QString::fromStdString(path2file));
     read_signal_file signalReader;
-    signal = signalReader.read_signal_file_all(infoSig, true);
-
-    qDebug() << "The file opening took" << timer.elapsed() << "milliseconds";
+    signal = signalReader.read_signal_file_all(infoSig, false);
 
     // TO DO - fallbacks for eror when file is not valid, is empty etc.
     // TO DO - open dropped files --> maincurve is not updated until focus is back on EEGle
     // TO DO - update maincurve? delete it first?
 
+    if (!signal.check) {
+        return;
+    }
+
+
+    // 1. Clean up old manager if we are opening a new file
+    if (m_dataManager) {
+        delete m_dataManager;
+    }
+
     file_open = 1; // 1 if file is loaded
-    viewtime = 0; //reset viewtime
+
     if (signal.recorder_info.highestRate > 0) {
         lengthOfFile = (signal.recorder_info.epochLengthInSamples / (double)signal.recorder_info.highestRate) * signal.signal_pages.size();
     }
-    maincurve->update();
-};
+
+    // 2. Create the new manager
+    m_dataManager = new EegDataManager(&signal);
+
+    // 3. Tell the ViewCurve to use this manager
+    maincurve->setDataManager(m_dataManager, signal.recorder_info.channels);
+
+    // 4. Set the initial view (e.g., start at 0 seconds, show 10 seconds)
+    maincurve->setTimeWindow(0.0, 10.0);
+}
 
 void MainWindow::show_about_dialog()
 {
     QMessageBox messagewindow(QMessageBox::NoIcon,
                               "About this program",
                               "EEGle is an EEG reader created as a substitution for the old BrainLab reader running only on Windows XP.\n"
-    "\n"
-    "EEGle reader is inspired by EDF Browser from Teuniz and is using convertSIGtoEDF from Frederik-D-Weber to read BrainLab EEG files\n"
-    "\n"
-    "Built using Qt Creator 4.14.1 and Qt 5.15.2 (MSVC 2019, 64 bit)"
-    "\n"
-    "\n"
-    "by Adam Kalina, Department of Neurology, Second Faculty of Medicine, Charles University and Motol University Hospital, 2021, during COVID-19"
-  );
+                              "\n"
+                              "EEGle reader is inspired by EDF Browser from Teuniz and is using convertSIGtoEDF from Frederik-D-Weber to read BrainLab EEG files\n"
+                              "\n"
+                              "Built using Qt Creator 4.14.1 and Qt 5.15.2 (MSVC 2019, 64 bit)"
+                              "\n"
+                              "\n"
+                              "by Adam Kalina, Department of Neurology, Second Faculty of Medicine, Charles University and Motol University Hospital, 2021, during COVID-19"
+                              );
     messagewindow.setStyleSheet("QLabel{min-width: 700px;}");
     messagewindow.exec();
 }
@@ -316,32 +330,32 @@ void MainWindow::show_kb_shortcuts()
                               "Keyboard shortcuts",
 
                               "Nic One Style - default\n"
-   "PgDn\t\tnext page\n"
-   "PgUp\t\tformer page\n"
-   "Right Arrow\tshift right one second\n"
-   "Left Arrow\tshift left one second\n"
-"\n"
+                              "PgDn\t\tnext page\n"
+                              "PgUp\t\tformer page\n"
+                              "Right Arrow\tshift right one second\n"
+                              "Left Arrow\tshift left one second\n"
+                              "\n"
 
-    "BrainLab Style - optional\n"
-    "Right Arrow\tnext page\n"
-    "Left Arrow\tprevious page\n"
-   "PgDn\t\tnext page\n"
-   "PgUp\t\tformer page\n"
-"\n"
+                              "BrainLab Style - optional\n"
+                              "Right Arrow\tnext page\n"
+                              "Left Arrow\tprevious page\n"
+                              "PgDn\t\tnext page\n"
+                              "PgUp\t\tformer page\n"
+                              "\n"
 
-    "Common\n"
-   "Up Arrow\tincrease amplitude\n"
-   "Down Arrow\tdecrease amplitude\n"
-   "Home\t\tgo to start of file\n"
-   "End\t\tgo to end of file\n"
-   "1 - 8\t\tload predefined montage\n"
-   "\nCtrl+O\t\tOpen a file\n"
-   "Alt+F4\t\tExit program\n"
+                              "Common\n"
+                              "Up Arrow\tincrease amplitude\n"
+                              "Down Arrow\tdecrease amplitude\n"
+                              "Home\t\tgo to start of file\n"
+                              "End\t\tgo to end of file\n"
+                              "1 - 8\t\tload predefined montage\n"
+                              "\nCtrl+O\t\tOpen a file\n"
+                              "Alt+F4\t\tExit program\n"
 
-   "\nMousewheel\tshift left or right\n"
+                              "\nMousewheel\tshift left or right\n"
 
-   "\nSpace\t\tToggle Playback or Pause\n"
-  );
+                              "\nSpace\t\tToggle Playback or Pause\n"
+                              );
 
     messagewindow.exec();
 }
@@ -417,12 +431,12 @@ void MainWindow::last_page()
 // TO DO - find ho to do this in one step using one slot
 void MainWindow::mousewheel_mode_page(){
     qDebug() << "mouse wheel mode = page";
-    this->mouseWheel = 0;
+    this->mouseWheelMode = 0;
 }
 
 void MainWindow::mousewheel_mode_step(){
     qDebug() << "mouse wheel mode = step";
-    this->mouseWheel = 1;
+    this->mouseWheelMode = 1;
 }
 
 void MainWindow::createToolbars(){
