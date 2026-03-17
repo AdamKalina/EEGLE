@@ -39,7 +39,6 @@ public:
 
     //void paintEvent(QPaintEvent *event);
     read_signal_file::SignalFile signal;
-    EegDataManager* m_dataManager = nullptr;
 
     // Variables
     //defaults - TO DO - class that stores default options?
@@ -62,6 +61,8 @@ public:
     void createToolbars();
 
 private:
+    EegDataManager* m_dataManager = nullptr;
+    read_signal_file* m_signalReader = nullptr;
     QMenuBar     *menubar;
     QToolBar *toolBar;
 

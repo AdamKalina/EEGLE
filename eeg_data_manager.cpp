@@ -4,6 +4,13 @@ EegDataManager::EegDataManager(read_signal_file::SignalFile* signalFile, read_si
     m_signal = signalFile;
     m_signalReader = signalReader;
 
+    int numChannels = m_signal->recorder_info.numberOfChannelsUsed;
+    m_rawCache.resize(numChannels);
+
+    // Initialize cache bounds to invalid values so it forces a load on the first draw
+    m_cachedStartPage = -1;
+    m_cachedEndPage = -1;
+
 }
 
 void EegDataManager::ensureDataLoaded(int requested_start_page, int requested_end_page) { // by Gemini

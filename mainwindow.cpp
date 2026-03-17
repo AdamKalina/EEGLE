@@ -1,8 +1,9 @@
 #include "mainwindow.h"
 
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow(){
     delete maincurve;
+    if (m_dataManager) delete m_dataManager;
+    if (m_signalReader) delete m_signalReader; // Add this
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -263,21 +264,25 @@ void MainWindow::dropEvent(QDropEvent* e)
 void MainWindow::open_file(std::string path2file){
 
     QFileInfo infoSig(QString::fromStdString(path2file));
-    read_signal_file signalReader;
-    signal = signalReader.read_signal_file_all(infoSig, false);
 
-    // TO DO - fallbacks for eror when file is not valid, is empty etc.
-    // TO DO - open dropped files --> maincurve is not updated until focus is back on EEGle
-    // TO DO - update maincurve? delete it first?
+    // 1. Clean up old manager AND old reader if opening a new file
+    if (m_dataManager) {
+        delete m_dataManager;
+        m_dataManager = nullptr;
+    }
+    if (m_signalReader) {
+        delete m_signalReader;
+        m_signalReader = nullptr;
+    }
+
+    // 2. Allocate the reader on the HEAP so it stays alive!
+    m_signalReader = new read_signal_file();
+
+    // 3. Use the -> operator since it is now a pointer
+    signal = m_signalReader->read_signal_file_all(infoSig, false);
 
     if (!signal.check) {
         return;
-    }
-
-
-    // 1. Clean up old manager if we are opening a new file
-    if (m_dataManager) {
-        delete m_dataManager;
     }
 
     file_open = 1; // 1 if file is loaded
@@ -286,13 +291,13 @@ void MainWindow::open_file(std::string path2file){
         lengthOfFile = (signal.recorder_info.epochLengthInSamples / (double)signal.recorder_info.highestRate) * signal.signal_pages.size();
     }
 
-    // 2. Create the new manager
-    m_dataManager = new EegDataManager(&signal, &signalReader);
+    // 4. Pass the alive heap pointer to the manager
+    m_dataManager = new EegDataManager(&signal, m_signalReader);
 
-    // 3. Tell the ViewCurve to use this manager
+    // 5. Tell the ViewCurve to use this manager
     maincurve->setDataManager(m_dataManager, signal.recorder_info.channels);
 
-    // 4. Set the initial view (e.g., start at 0 seconds, show 10 seconds)
+    // 6. Set the initial view (e.g., start at 0 seconds, show 10 seconds)
     maincurve->setTimeWindow(0.0, 10.0);
 }
 
@@ -360,63 +365,66 @@ void MainWindow::show_kb_shortcuts()
     messagewindow.exec();
 }
 
-void MainWindow::shift_page_right()
-{
-    if(!file_open)  return;
+void MainWindow::shift_page_right(){
+    if(!file_open) return;
 
-    if(viewtime >= lengthOfFile - pagetime) return;
+    double currentTime = maincurve->getStartTime();
+    double duration = maincurve->getDuration();
 
-    viewtime += 1;
-    qDebug() << "viewtime: " << viewtime << " s";
+    // Prevent scrolling past the end of the file
+    if(currentTime + 1.0 > lengthOfFile - duration) return;
 
-    maincurve->update();
+    // Shift right by 1 second and trigger a redraw
+    maincurve->setTimeWindow(currentTime + 1.0, duration);
 }
 
-void MainWindow::shift_page_left()
-{
-    if(!file_open)  return;
+void MainWindow::shift_page_left(){
+    if(!file_open) return;
 
-    if(viewtime == 0) return;
+    double currentTime = maincurve->getStartTime();
+    double duration = maincurve->getDuration();
 
-    viewtime -= 1;
-    qDebug() << "viewtime: " << viewtime << " s";
-
-    maincurve->update();
+    // Prevent scrolling before the start of the file
+    if(currentTime - 1.0 < 0) {
+        maincurve->setTimeWindow(0.0, duration);
+    } else {
+        maincurve->setTimeWindow(currentTime - 1.0, duration);
+    }
 }
 
 void MainWindow::next_page()
 {
-    if(!file_open)  return;
+    if(!file_open) return;
 
-    if(viewtime >= lengthOfFile - pagetime) return;
+    double currentTime = maincurve->getStartTime();
+    double duration = maincurve->getDuration();
 
-    viewtime += pagetime;
-    qDebug() << "viewtime: " << viewtime << " s";
-    maincurve->update();
+    if(currentTime + duration > lengthOfFile - duration) {
+        maincurve->setTimeWindow(lengthOfFile - duration, duration);
+    } else {
+        maincurve->setTimeWindow(currentTime + duration, duration); // Jump by a full page
+    }
 }
 
 void MainWindow::previous_page()
 {
-    if(!file_open)  return;
-    if(viewtime == 0) return;
+    if(!file_open) return;
 
-    if(viewtime <= pagetime){
-        viewtime = 0;
-    }
-    else{
-        viewtime -= pagetime;
-    }
-    qDebug() << "viewtime: " << viewtime << " s";
+    double currentTime = maincurve->getStartTime();
+    double duration = maincurve->getDuration();
 
-    maincurve->update();
+    if(currentTime - duration <= 0){
+        maincurve->setTimeWindow(0.0, duration);
+    } else {
+        maincurve->setTimeWindow(currentTime - duration, duration); // Jump back a full page
+    }
 }
 
-void MainWindow::first_page()
-{
+void MainWindow::first_page(){
+
     if(!file_open)  return;
-    if(viewtime == 0) return;
-    viewtime = 0;
-    maincurve->update();
+    double duration = maincurve->getDuration();
+    maincurve->setTimeWindow(0.0, duration);
 }
 
 void MainWindow::last_page()

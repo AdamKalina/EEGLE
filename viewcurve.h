@@ -25,6 +25,8 @@ public:
     ~ViewCurve();
     void setDataManager(EegDataManager* manager, const std::vector<read_signal_file::Channel>& channels);
     void setTimeWindow(double startTimeSec, double durationSec);
+    double getStartTime() const { return m_startTime; }
+    double getDuration() const { return m_duration; }
 
     //void drawCurve_stage_1(QPainter *painter=NULL);
     MainWindow *mainwindow;
