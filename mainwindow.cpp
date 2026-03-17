@@ -207,7 +207,7 @@ void MainWindow::open_file_dialog(){
     }
 
     open_file(path2file);
-};
+}
 
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)
@@ -287,7 +287,7 @@ void MainWindow::open_file(std::string path2file){
     }
 
     // 2. Create the new manager
-    m_dataManager = new EegDataManager(&signal);
+    m_dataManager = new EegDataManager(&signal, &signalReader);
 
     // 3. Tell the ViewCurve to use this manager
     maincurve->setDataManager(m_dataManager, signal.recorder_info.channels);

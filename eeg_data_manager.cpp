@@ -1,7 +1,9 @@
 #include "eeg_data_manager.h"
 
-EegDataManager::EegDataManager(read_signal_file::SignalFile* signalFile){
+EegDataManager::EegDataManager(read_signal_file::SignalFile* signalFile, read_signal_file *signalReader){
     m_signal = signalFile;
+    m_signalReader = signalReader;
+
 }
 
 void EegDataManager::ensureDataLoaded(int requested_start_page, int requested_end_page) { // by Gemini
@@ -40,7 +42,7 @@ void EegDataManager::ensureDataLoaded(int requested_start_page, int requested_en
         long specific_page_offset = base_file_offset + (p * page_size_bytes);
 
         // Read that page and insert it into m_rawCache starting at current_sample_start
-        m_signalReader->read_signal_page_into(
+        m_signalReader->read_signal_page_into_cache(
                     specific_page_offset,
                     m_signal->recorder_info.numberOfChannelsUsed,
                     m_signal->recorder_info.channels,
@@ -58,11 +60,20 @@ void EegDataManager::ensureDataLoaded(int requested_start_page, int requested_en
     m_cachedEndPage = load_end;
 }
 
+std::vector<std::vector<double> > EegDataManager::applyMontage(const std::vector<std::vector<double> > &raw_segment)
+{
+    return raw_segment;
+}
+
+void EegDataManager::applyFiltersInPlace(std::vector<std::vector<double> > &traces)
+{
+}
+
 std::vector<std::vector<double>> EegDataManager::getProcessedData(double start_time_sec, double end_time_sec) {
 
     // 1. Convert requested times to Page indices
-    int start_page = ... // calculate based on sampling rate
-    int end_page = ...
+    int start_page = start_time_sec / 10;
+    int end_page = end_time_sec / 10;
 
     // 2. CACHE LAYER: Guarantee the raw data is in memory
     ensureDataLoaded(start_page, end_page);
@@ -78,21 +89,21 @@ std::vector<std::vector<double>> EegDataManager::getProcessedData(double start_t
     applyFiltersInPlace(traces);
 
     // Return exactly what the UI needs to draw
-    return traces;
+    return traces; // after implementation of montages and filtering
 }
 
 std::vector<std::vector<double>> EegDataManager::extractSegment(double start_time_sec, double end_time_sec) {
 
-    //    The trick here is translating "Time in seconds" to a "Local Index" inside our m_rawCache vector.
+    // The trick here is translating "Time in seconds" to a "Local Index" inside our m_rawCache vector.
 
-    //    1) Global Index: Which sample is this in the entire file?
-    //       global_sample = time_in_seconds * sampling_rate
+    // 1) Global Index: Which sample is this in the entire file?
+    //    global_sample = time_in_seconds * sampling_rate
 
-    //    2) Cache Start Index: Which global sample does our m_rawCache[0] represent?
-    //       cache_start_sample = m_cachedStartPage * samples_per_page
+    // 2) Cache Start Index: Which global sample does our m_rawCache[0] represent?
+    //    cache_start_sample = m_cachedStartPage * samples_per_page
 
-    //    3) Local Index: Where is this in our vector?
-    //       local_index = global_sample - cache_start_sample
+    // 3) Local Index: Where is this in our vector?
+    //    local_index = global_sample - cache_start_sample
 
 
     // Create the output container

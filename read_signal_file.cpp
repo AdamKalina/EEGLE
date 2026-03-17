@@ -559,6 +559,7 @@ read_signal_file::Spage read_signal_file::read_signal_page(long offset, int chan
 void read_signal_file::read_signal_page_into_cache(long offset, int channels_used, const std::vector<Channel>& channels, int sample_start_index, std::vector<std::vector<double>>& cache_buffer){
 
     // Jump to the exact location of the page in the file
+    qDebug() << file.is_open();
     file.clear(); // resets the pointer - always clear the stream state before seeking, just in case of prior EOF
     file.seekg(offset); // set it to given position
 

@@ -15,7 +15,7 @@ struct MontageTrace {
 
 class EegDataManager {
 public:
-    EegDataManager(read_signal_file::SignalFile* signalFile);
+    EegDataManager(read_signal_file::SignalFile* signalFile, read_signal_file* m_signalReader);
 
     // The main API for the UI
     // Returns a 2D vector where [trace_index][sample_index]
@@ -29,6 +29,7 @@ public:
 private:
     read_signal_file::SignalFile* m_signal;
     std::vector<MontageTrace> m_currentMontage;
+    read_signal_file *m_signalReader;
 
     // --- CACHE STATE ---
     int m_cachedStartPage;

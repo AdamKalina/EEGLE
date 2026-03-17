@@ -121,33 +121,11 @@ void ViewCurve::paintEvent(QPaintEvent *event){
     int scaleY = 50;
 
     // viewbuf
-    std::vector<std::vector<double>> viewbuf;
+    double endTime = m_startTime + m_duration;
+    std::vector<std::vector<double>> viewbuf = m_dataManager->getProcessedData(m_startTime, endTime);
 
 
     // ====== LOAD DATA TO VIEWBUF ======
-    for (int i = 0; i < mainwindow->signal.recorder_info.numberOfChannelsUsed;i++){
-        if (i >= (int)mainwindow->signal.signal_data.size()) break;
-
-        int timeWindow = mainwindow->signal.recorder_info.channels[i].sampling_rate*second2draw;
-        long long windowStart = mainwindow->viewtime*mainwindow->signal.recorder_info.channels[i].sampling_rate;
-
-        if (windowStart < 0) windowStart = 0;
-        if (windowStart >= (long long)mainwindow->signal.signal_data[i].size()) {
-            viewbuf.push_back(std::vector<double>());
-            continue;
-        }
-
-        if (windowStart + timeWindow > (long long)mainwindow->signal.signal_data[i].size()) {
-            timeWindow = (long long)mainwindow->signal.signal_data[i].size() - windowStart;
-        }
-
-        std::vector<double> temp_channel;
-        if (timeWindow > 0) {
-            temp_channel.assign(mainwindow->signal.signal_data[i].begin()+windowStart, mainwindow->signal.signal_data[i].begin() + windowStart + timeWindow);
-        }
-
-        viewbuf.push_back(temp_channel);
-    }
 
 
     // ====== painter definition ======
